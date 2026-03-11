@@ -19,7 +19,7 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 
 	//Load shaders
 	m_SolidRectShader = CompileShaders("./Shaders/SolidRect.vs", "./Shaders/SolidRect.fs");
-	m_SolidRectShader = CompileShaders("./Shaders/Triangle.vs", "./Shaders/Triangle.fs");
+	m_TriangleShader = CompileShaders("./Shaders/Triangle.vs", "./Shaders/Triangle.fs");
 	//Create VBOs
 	CreateVertexBufferObjects();
 
@@ -53,7 +53,7 @@ void Renderer::CreateVertexBufferObjects()
 		=
 	{
 		0,0,0,  //v0
-		1,1,0,	//v1
+		1,0,0,	//v1
 		1,1,0	//v2
 	};
 	glGenBuffers(1, &m_TriangleVBO);  // 0보다 큰값이 보통 넘어옴
@@ -207,7 +207,7 @@ void Renderer::DrawSolidTriangle()
 	glBindBuffer(GL_ARRAY_BUFFER, m_TriangleVBO);
 	glVertexAttribPointer(attribPosition, 3, GL_FLOAT, GL_FALSE, sizeof(float) * 3, 0);
 
-	glDrawArrays(GL_TRIANGLES, 0, 6);
+	glDrawArrays(GL_TRIANGLES, 0, 3);
 
 
 }
