@@ -15,7 +15,7 @@ public:
 
 	bool IsInitialized();
 	void DrawSolidRect(float x, float y, float z, float size, float r, float g, float b, float a);
-
+	void DrawSolidTriangle();
 private:
 	void Initialize(int windowSizeX, int windowSizeY);
 	bool ReadFile(char* filename, std::string *target);
@@ -31,5 +31,8 @@ private:
 
 	GLuint m_VBORect = 0;
 	GLuint m_SolidRectShader = 0;
+
+	GLuint m_TriangleVBO = 0; //VBO는 한 번 만들면 여기저기서 사용이 된다. 그래서 클래스 범위여야한다.
+	GLuint m_TriangleShader = 0;
 };
 
