@@ -3,6 +3,12 @@
 uniform float u_Time;
 
 in vec3 a_Position;
+in float a_Mass;
+in vec2 a_vel;
+in float a_RV;
+
+const float c_Pi = 3.141592;
+const vec2 c_G = vec2(0, -9.8);
 
 void Basic()
 {
@@ -82,7 +88,59 @@ void circle2()
 
     gl_Position = vec4(pos, 1.0);
 }
+
+void Falling()
+{
+    float t=mod(u_Time+ a_RV, 1.0);
+    vec4 newPos;
+    newPos.x = a_Position.x+ (a_vel.x* t) + (t*t*1/2 *c_G.x );
+    newPos.y = a_Position.y+ (a_vel.y* t) + (t*t*1/2 *c_G.y );
+    newPos.z =0;
+    newPos.w =1;
+
+    gl_Position = newPos;
+}
+
+void snow()
+{
+    float t=mod(u_Time+ a_RV, 1.0);
+    float initPosX =cos(a_Position.x*c_Pi*t)-1;
+    float initPosY =sin(a_Position.y*c_Pi*t);
+    vec4 newPos;
+    newPos.x = initPosX+ (a_vel.x* t) + (t*t*1/2 *c_G.x );
+    newPos.y = initPosY+ (a_vel.y* t) + (t*t*1/2 *c_G.y );
+    newPos.z =0;
+    newPos.w =1;
+
+    gl_Position = newPos;
+}
+void practiceTest_1()
+{
+    float t=mod(u_Time, 1.0);
+    float initPosX =cos(a_Position.x);
+    float initPosY =sin(a_Position.y);
+    vec4 newPos;
+    newPos.x = initPosX+ (a_vel.x* t) + (t*t*1/2 *c_G.x );
+    newPos.y = initPosY+ (a_vel.y* t) + (t*t*1/2 *c_G.y );
+    newPos.z =0;
+    newPos.w =1;
+
+    gl_Position = newPos;
+}
+void Answer_1()
+{
+    float t=mod(u_Time, 1.0);
+    float initPosX =a_Position.x + sin(2*c_Pi*a_RV);
+    float initPosY =a_Position.y + cos(2*c_Pi*a_RV);
+    vec4 newPos;
+    newPos.x = initPosX+ (a_vel.x* t) + (t*t*1/2 *c_G.x );
+    newPos.y = initPosY+ (a_vel.y* t) + (t*t*1/2 *c_G.y );
+    newPos.z =0;
+    newPos.w =1;
+
+    gl_Position = newPos;
+}
 void main()
 {
-    circle2();
+    Answer_1();
 }
