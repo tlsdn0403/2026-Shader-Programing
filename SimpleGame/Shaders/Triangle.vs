@@ -3,9 +3,13 @@
 uniform float u_Time;
 
 in vec3 a_Position;
-in float a_Mass;
-in vec2 a_vel;
+in float a_Mass; //중력의 영향을 받는 모양새는 중량을 가지고 있음
+in vec2 a_vel;   
 in float a_RV;
+in float a_RV1;
+in float a_RV2;
+
+out float v_Grey;
 
 const float c_Pi = 3.141592;
 const vec2 c_G = vec2(0, -9.8);
@@ -88,17 +92,38 @@ void circle2()
 
     gl_Position = vec4(pos, 1.0);
 }
-
+float pseudoRandom(float n)
+{
+    return fract(sin(n) * 43758.5453123);
+}
 void Falling()
 {
-    float t=mod(u_Time+ a_RV, 1.0);
-    vec4 newPos;
-    newPos.x = a_Position.x+ (a_vel.x* t) + (t*t*1/2 *c_G.x );
-    newPos.y = a_Position.y+ (a_vel.y* t) + (t*t*1/2 *c_G.y );
-    newPos.z =0;
-    newPos.w =1;
+    // emitTime을 계산하기 위함
+    float newTime = u_Time - a_RV1*3;
+    if(newTime>0)
+    {
+        float lifeTime = (a_RV2 +0.5)*0.2 ; // 얘가 파티클 별로 다르면 어떨까?  ->0.5~1.5 초
+        
+        float t= mod(newTime, lifeTime); // mod = 시간을 1로 나눈 나머지 -> life time이 1초였다.
 
-    gl_Position = newPos;
+        float size = pseudoRandom(a_RV1)* (lifeTime -t)/lifeTime;  // 어떻게 해야 작아질까?? (시간이 지날수록 시험)
+
+        float initPosX =size* a_Position.x + sin(2*c_Pi*a_RV);
+        float initPosY =size* a_Position.y + cos(2*c_Pi*a_RV);
+        vec4 newPos;
+       
+        newPos.x = initPosX+ (a_vel.x/10* t) + (0.5 * t * t *c_G.x );
+        newPos.y = initPosY+ (a_vel.y/10* t) + (0.5 * t * t *c_G.y );
+        newPos.z = 0;
+        newPos.w =1;
+
+        gl_Position = newPos;
+    }
+    else
+    {
+        gl_Position = vec4(100.0, 100.0, 100.0, 1.0);
+    }
+   
 }
 
 void snow()
@@ -129,18 +154,58 @@ void practiceTest_1()
 }
 void Answer_1()
 {
-    float t=mod(u_Time, 1.0);
-    float initPosX =a_Position.x + sin(2*c_Pi*a_RV);
-    float initPosY =a_Position.y + cos(2*c_Pi*a_RV);
-    vec4 newPos;
-    newPos.x = initPosX+ (a_vel.x* t) + (t*t*1/2 *c_G.x );
-    newPos.y = initPosY+ (a_vel.y* t) + (t*t*1/2 *c_G.y );
-    newPos.z =0;
-    newPos.w =1;
+    // emitTime을 계산하기 위함
+    float newTime = u_Time - pseudoRandom(a_RV1);
+    if(newTime>0){
+        float size = pseudoRandom(a_RV1);
+        float t=mod(newTime, 1.0);
+        float initPosX =size* a_Position.x + sin(2*c_Pi*a_RV);
+        float initPosY =size* a_Position.y + cos(2*c_Pi*a_RV);
+        vec4 newPos;
+       
+        newPos.x = initPosX+ (a_vel.x/10* t) + (0.5 * t * t *c_G.x );
+        newPos.y = initPosY+ (a_vel.y/10* t) + (0.5 * t * t *c_G.y );
+        newPos.z = 0;
+        newPos.w =1;
 
-    gl_Position = newPos;
+        gl_Position = newPos;
+    }
+    else
+    {
+        gl_Position = vec4(100.0, 100.0, 100.0, 1.0);
+    }
+   
 }
+void Thurst()
+{
+    float newTime = u_Time - a_RV1;
+    if(newTime>0){
+        float period = a_RV2;
+        float t = mod(newTime ,1.0);  // 지속적으로 증가하는 값은 얘가 유일하다.
+
+        float ampScale =t*0.5;
+        float amp = 2*(a_RV -0.5)*ampScale;
+        float size = (2-t)*2;  // 0~1
+      
+        vec4 newPos;
+       
+        newPos.x = a_Position.x+(2*t*size-1);
+        newPos.y = a_Position.y+amp * sin(c_Pi*2 * period * t) * size;
+        newPos.z = a_Position.z;
+        newPos.w =1;
+        gl_Position = newPos;
+
+        v_Grey = 1;
+    }
+    else{
+        gl_Position = vec4(10000,0,0,1);
+        v_Grey = 0;
+    }
+   
+}
+
 void main()
 {
-    Answer_1();
+    Thurst();
+     v_Grey = 1;
 }

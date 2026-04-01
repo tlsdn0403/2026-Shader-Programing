@@ -20,12 +20,13 @@ Renderer *g_Renderer = NULL;
 void RenderScene(void)
 {
 	glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-	glClearColor(0.0f, 0.3f, 0.3f, 1.0f);
+	glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
 
 	// Renderer Test
-	g_Renderer->DrawSolidTriangle();
+	/*g_Renderer->DrawSolidTriangle();
 
-	g_Renderer->DrawParticles(1.0f, 1.0f, 0.0f, 1.0f);
+	g_Renderer->DrawParticles(1.0f, 1.0f, 0.0f, 1.0f);*/
+	g_Renderer->DrawDraw();
 	glutSwapBuffers(); //백 버퍼에 그림이 완성되면 자동으로 화면에 그림이 그려짐
 }
 
