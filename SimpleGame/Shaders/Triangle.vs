@@ -185,11 +185,11 @@ void Thurst()
 
         float ampScale =t*0.5;
         float amp = 2*(a_RV -0.5)*ampScale;
-        float size = (2-t)*2;  // 0~1
+        float size = (2-t)*2;  // 0~2
       
         vec4 newPos;
        
-        newPos.x = a_Position.x+(2*t*size-1);
+        newPos.x = a_Position.x+(2*t-1);
         newPos.y = a_Position.y+amp * sin(c_Pi*2 * period * t) * size;
         newPos.z = a_Position.z;
         newPos.w =1;
@@ -204,8 +204,9 @@ void Thurst()
    
 }
 
+
 void main()
 {
-    Thurst();
+   
      v_Grey = 1;
 }

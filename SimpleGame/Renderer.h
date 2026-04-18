@@ -47,6 +47,10 @@ private:
 	GLuint m_VBODraw = 0;
 	GLuint m_DrawShader = 0;
 
+	//RainDrop
+	float m_RainInfo[500 * 4];
+
+
 	// particle¿ë
 	GLuint m_ParticleVBO = 0;
 	int m_ParticleVertexCount = 0;

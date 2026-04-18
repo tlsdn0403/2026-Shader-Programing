@@ -25,6 +25,22 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 	/*CreateVertexBufferObjects();*/
 	CreateDrawVBO();
 	GenParticles(1000);
+
+	// Fill rain info
+	int index = 0;
+	for(int i = 0; i < 500; ++i)
+	{
+		float x = rand() / (float)RAND_MAX; ;
+		float y = rand() / (float)RAND_MAX; ;
+		float sTime = 5 * (float)rand() / (float)RAND_MAX;
+		float lTime = 0.5 * (float)rand() / (float)RAND_MAX ;
+
+		m_RainInfo[index] = x; index++;
+		m_RainInfo[index] = y; index++;
+		m_RainInfo[index] = sTime; index++;
+		m_RainInfo[index] = lTime; index++;
+	}
+
 	if (m_SolidRectShader > 0 && m_VBORect > 0)
 	{
 		m_Initialized = true;
@@ -311,7 +327,7 @@ void Renderer::DrawParticles(float x, float y, float z, float size)
 	if (m_ParticleVBO == 0 || m_ParticleVertexCount == 0)
 		return;
 
-	gTime += 0.1f;
+	gTime += 0.0001f;
 
 	float newX, newY;
 	GetGLPosition(x, y, &newX, &newY);
@@ -385,9 +401,15 @@ void Renderer::DrawDraw()
 	int attribPosition = glGetAttribLocation(shader, "a_Pos");
 	int attribTex = glGetAttribLocation(shader, "a_Tex");
 
-	gTime += 0.001f;
-	int uTime = glGetUniformLocation(m_TriangleShader, "u_Time");
+	gTime += 0.0016f;
+
+
+	int uTime = glGetUniformLocation(m_DrawShader, "u_Time");
 	glUniform1f(uTime, gTime);
+
+	int uPoints = glGetUniformLocation(m_DrawShader, "u_Points");
+	glUniform4fv(uPoints, 1000, m_RainInfo);
+
 	glBindBuffer(GL_ARRAY_BUFFER, m_VBODraw);
 
 	glEnableVertexAttribArray(attribPosition);
