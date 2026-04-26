@@ -25,8 +25,8 @@ void RenderScene(void)
 	// Renderer Test
 	/*g_Renderer->DrawSolidTriangle();
 	*/
-	g_Renderer->DrawParticles(1.0f, 1.0f, 0.0f, 1.0f);
-	/*g_Renderer->DrawDraw();*/
+	/*g_Renderer->DrawParticles(1.0f, 1.0f, 0.0f, 1.0f);*/
+	g_Renderer->DrawDraw();
 	glutSwapBuffers(); //백 버퍼에 그림이 완성되면 자동으로 화면에 그림이 그려짐
 }
 

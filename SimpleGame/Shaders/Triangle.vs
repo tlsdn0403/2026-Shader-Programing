@@ -207,6 +207,6 @@ void Thurst()
 
 void main()
 {
-   
+   Thurst();
      v_Grey = 1;
 }

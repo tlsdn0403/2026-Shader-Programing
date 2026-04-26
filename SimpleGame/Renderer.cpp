@@ -1,5 +1,7 @@
 #include "stdafx.h"
 #include "Renderer.h"
+#include "LoadPng.h"
+#include"assert.h"
 
 Renderer::Renderer(int windowSizeX, int windowSizeY)
 {
@@ -21,6 +23,16 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 	m_SolidRectShader = CompileShaders("./Shaders/SolidRect.vs", "./Shaders/SolidRect.fs");
 	m_TriangleShader = CompileShaders("./Shaders/Triangle.vs", "./Shaders/Triangle.fs");
 	m_DrawShader = CompileShaders("./Shaders/FS.vs", "./Shaders/FS.fs");
+
+	m_RGBTexture = CreatePngTexture("./Texctures/rgb.png", GL_NEAREST);
+	m_NumsTexture = CreatePngTexture("./Texctures/rgb.png", GL_NEAREST);
+
+	for(int i = 0; i < 10; ++i)
+	{
+		std::string path = "./Texctures/" + std::to_string(i) + ".png";
+		m_NumTexture[i] = CreatePngTexture((char *)path.c_str(), GL_NEAREST);
+	}
+
 	//Create VBOs
 	/*CreateVertexBufferObjects();*/
 	CreateDrawVBO();
@@ -46,7 +58,51 @@ void Renderer::Initialize(int windowSizeX, int windowSizeY)
 		m_Initialized = true;
 	}
 }
+GLuint Renderer::CreatePngTexture(char* filePath, GLuint samplingMethod)
+{
 
+	//Load Png
+
+	std::vector<unsigned char> image;
+
+	unsigned width, height;
+
+	unsigned error = lodepng::decode(image, width, height, filePath);
+
+	if (error != 0)
+
+	{
+
+		std::cout << "PNG image loading failed:" << filePath << std::endl;
+
+		// 여기 들어오면 안되는 경우 인위적으로 죽임
+		assert(0);
+
+	}
+
+
+
+	GLuint temp;
+
+	glGenTextures(1, &temp);
+
+	glBindTexture(GL_TEXTURE_2D, temp);
+
+	glTexImage2D(GL_TEXTURE_2D, 0, GL_RGBA, width, height, 0, GL_RGBA,
+
+		GL_UNSIGNED_BYTE, &image[0]);
+
+
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, samplingMethod);
+
+	glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, samplingMethod);
+
+
+
+	return temp;
+
+}
 bool Renderer::IsInitialized()
 {
 	return m_Initialized;
@@ -233,7 +289,7 @@ float gTime = 0;
 
 void Renderer::DrawSolidTriangle()
 {
-	gTime += 0.001;
+	gTime += 0.01;
 	//Program select
 	glUseProgram(m_TriangleShader);
 
@@ -327,7 +383,7 @@ void Renderer::DrawParticles(float x, float y, float z, float size)
 	if (m_ParticleVBO == 0 || m_ParticleVertexCount == 0)
 		return;
 
-	gTime += 0.0001f;
+	gTime += 0.01f;
 
 	float newX, newY;
 	GetGLPosition(x, y, &newX, &newY);
@@ -401,11 +457,17 @@ void Renderer::DrawDraw()
 	int attribPosition = glGetAttribLocation(shader, "a_Pos");
 	int attribTex = glGetAttribLocation(shader, "a_Tex");
 
-	gTime += 0.0016f;
+	gTime += 0.016f;
 
 
 	int uTime = glGetUniformLocation(m_DrawShader, "u_Time");
 	glUniform1f(uTime, gTime);
+
+	int uRGBTex = glGetUniformLocation(m_DrawShader, "u_RGBTex");
+	glUniform1i(uRGBTex, 0);
+
+	glActiveTexture(GL_TEXTURE0);
+	glBindTexture(GL_TEXTURE_2D, m_RGBTexture);
 
 	int uPoints = glGetUniformLocation(m_DrawShader, "u_Points");
 	glUniform4fv(uPoints, 1000, m_RainInfo);
