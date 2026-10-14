@@ -113,13 +113,14 @@ void EditorUI::DrawToolbar(Renderer& renderer, Settings& s, float& elapsed, floa
 void EditorUI::DrawLibrary(Settings& s) {
     Label("EXPERIMENTS"); ImGui::TextDisabled("Select a material study"); ImGui::Spacing();
     for(int i=0;i<5;++i) {
-        if(ImGui::Selectable(names[i],s.effect==i,0,{0,43})) Preset(s,i);
+        if(ImGui::Selectable(names[i],s.Selected().effect==i,0,{0,43})) Preset(s,i);
         effectCenters[i]={ImGui::GetItemRectMin().x+80,ImGui::GetItemRectMin().y+20};
     }
+    DrawObjects(s);
     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); Label("ABOUT THIS STUDY");
-    ImGui::TextWrapped("%s",descriptions[s.effect]);
+    ImGui::TextWrapped("%s",descriptions[s.Selected().effect]);
     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); Label("CONTROLS");
-    ImGui::TextWrapped("Drag preview  /  Orbit\nMouse wheel  /  Zoom\nHome  /  Frame object\nSpace  /  Play or pause\nR  /  Reload shaders");
+    ImGui::TextWrapped("Drag preview  /  Orbit\nMouse wheel  /  Zoom\nHome  /  Frame scene\nSpace  /  Play or pause\nR  /  Reload shaders");
     ImGui::Spacing(); ImGui::TextDisabled("OpenGL 3.3 / GLSL");
 }
 
@@ -127,19 +128,26 @@ void EditorUI::DrawLibrary(Settings& s) {
 void EditorUI::DrawInspector(Renderer& renderer, Settings& s, const std::filesystem::path& outputDirectory) {
     Label("INSPECTOR"); ImGui::TextDisabled("Live material parameters"); ImGui::Spacing();
     ImGui::SetNextItemWidth(-1);
-    if(ImGui::Combo("##Mesh",&s.mesh,"Sphere\0Cube\0Subdivided plane\0")) FrameCamera(s);
-    ImGui::ColorEdit3("Base color",s.color,ImGuiColorEditFlags_NoInputs);
-    ImGui::SetNextItemWidth(-1); ImGui::SliderFloat("##Roughness",&s.roughness,0.02f,1,"Specular width  %.2f");
-    if(s.effect==2) {ImGui::SetNextItemWidth(-1);ImGui::SliderFloat("##Rim",&s.rim,0.3f,8,"Rim power  %.2f");}
-    if(s.effect==3) {ImGui::SetNextItemWidth(-1);ImGui::SliderFloat("##Dissolve",&s.dissolve,0,1,"Dissolve  %.2f");}
-    if(s.effect==4) {ImGui::SetNextItemWidth(-1);ImGui::SliderFloat("##Wave",&s.wave,0,0.45f,"Wave height  %.2f");}
+    if(ImGui::Combo("##Mesh",&s.Selected().mesh,"Sphere\0Cube\0Subdivided plane\0")) FrameCamera(s);
+    ImGui::Text("Selected: Object %d", s.Selected().id);
+    ImGui::TextDisabled("Position X / Y / Z");
+    ImGui::SetNextItemWidth(-1);
+    ImGui::DragFloat3("##Position",s.Selected().position,0.05f,-30,30,"%.2f");
+    ImGui::SetNextItemWidth(-1);
+    ImGui::SliderFloat("##Scale",&s.Selected().scale,0.1f,3.0f,"Scale %.2f");
+    if(ImGui::Button("Frame scene",{-1,30})) FrameCamera(s);
+    ImGui::ColorEdit3("Base color",s.Selected().color,ImGuiColorEditFlags_NoInputs);
+    ImGui::SetNextItemWidth(-1); ImGui::SliderFloat("##Roughness",&s.Selected().roughness,0.02f,1,"Specular width  %.2f");
+    if(s.Selected().effect==2) {ImGui::SetNextItemWidth(-1);ImGui::SliderFloat("##Rim",&s.Selected().rim,0.3f,8,"Rim power  %.2f");}
+    if(s.Selected().effect==3) {ImGui::SetNextItemWidth(-1);ImGui::SliderFloat("##Dissolve",&s.Selected().dissolve,0,1,"Dissolve  %.2f");}
+    if(s.Selected().effect==4) {ImGui::SetNextItemWidth(-1);ImGui::SliderFloat("##Wave",&s.Selected().wave,0,0.45f,"Wave height  %.2f");}
     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); Label("LIGHTING");
     ImGui::SetNextItemWidth(-1); ImGui::SliderFloat("##Angle",&s.lightAngle,-3.14f,3.14f,"Light angle  %.2f");
     ImGui::SetNextItemWidth(-1); ImGui::SliderFloat("##Power",&s.lightPower,0,8,"Intensity  %.2f");
     ImGui::SetNextItemWidth(-1); ImGui::SliderFloat("##Ambient",&s.ambient,0,0.6f,"Ambient fill  %.2f");
     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); Label("VIEWPORT");
     ImGui::Checkbox("Wireframe",&s.wireframe); ImGui::Checkbox("Reference floor",&s.floor);
-    ImGui::TextDisabled("%d object triangles",renderer.Triangles(s.mesh));
+    ImGui::TextDisabled("%d object triangles",renderer.Triangles(s.Selected().mesh));
     ImGui::Spacing();
     if(ImGui::Button("Save preview (.png)",{-1,34})) {
         auto path=outputDirectory/"preview.png";
@@ -147,15 +155,15 @@ void EditorUI::DrawInspector(Renderer& renderer, Settings& s, const std::filesys
     }
     if(!captureStatus.empty()) ImGui::TextWrapped("%s",captureStatus.c_str());
     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); Label("SHADER STATUS");
-    ImGui::Text("%s.vs",Renderer::ShaderName(s.effect));
-    ImGui::Text("%s.fs",Renderer::ShaderName(s.effect));
+    ImGui::Text("%s.vs",Renderer::ShaderName(s.Selected().effect));
+    ImGui::Text("%s.fs",Renderer::ShaderName(s.Selected().effect));
     ImGui::TextWrapped("%s",renderer.Status().c_str());
 }
 
 // Renderer가 FBO에 그린 결과를 이미지로 표시하고, 미리보기 영역의 카메라 입력을 처리합니다.
 void EditorUI::DrawPreview(Renderer& renderer, Settings& s, float elapsed) {
     auto& io = ImGui::GetIO();
-    ImGui::Text("%s",names[s.effect]+5); ImGui::SameLine(); ImGui::TextDisabled(" /  Perspective");
+    ImGui::Text("%zu objects | Object %d",s.objects.size(),s.Selected().id); ImGui::SameLine(); ImGui::TextDisabled(" /  Perspective");
     ImVec2 available=ImGui::GetContentRegionAvail();
     renderer.Render(static_cast<int>(available.x*io.DisplayFramebufferScale.x),static_cast<int>(available.y*io.DisplayFramebufferScale.y),s,elapsed);
     ImGui::Image(static_cast<ImTextureID>(renderer.Texture()),available,{0,1},{1,0});
@@ -165,4 +173,42 @@ void EditorUI::DrawPreview(Renderer& renderer, Settings& s, float elapsed) {
     if(ImGui::IsItemHovered()&&ImGui::IsMouseClicked(ImGuiMouseButton_Left)) orbit=true;
     if(!ImGui::IsMouseDown(ImGuiMouseButton_Left)) orbit=false;
     if(orbit) {s.camera.Orbit(io.MouseDelta.x,io.MouseDelta.y);}
+}
+
+// 객체를 추가·선택·복제·삭제합니다. 벡터 변경 전에 참조를 보관하지 않아 무효 참조를 피합니다.
+void EditorUI::DrawObjects(Settings& s) {
+    ImGui::Spacing(); ImGui::Separator(); Label("SCENE OBJECTS");
+    ImGui::Text("%zu / %zu objects",s.objects.size(),Settings::MaxObjects);
+    ImGui::SetNextItemWidth(-1);
+    ImGui::SliderInt("##AddCount",&addCount,1,16,"Add count: %d");
+    auto add=[&](int mesh) {
+        for(int i=0;i<addCount;++i) if(!s.AddObject(mesh)) break;
+        FrameCamera(s);
+    };
+    ImGui::BeginDisabled(s.objects.size()>=Settings::MaxObjects);
+    if(ImGui::Button("+ Sphere",{98,30})) add(0);
+    ImGui::SameLine();
+    if(ImGui::Button("+ Cube",{98,30})) add(1);
+    addCubeCenter={ImGui::GetItemRectMin().x+40,ImGui::GetItemRectMin().y+15};
+    if(ImGui::Button("+ Plane",{98,30})) add(2);
+    ImGui::SameLine();
+    if(ImGui::Button("Duplicate",{98,30})) {s.DuplicateSelected();FrameCamera(s);}
+    duplicateCenter={ImGui::GetItemRectMin().x+40,ImGui::GetItemRectMin().y+15};
+    ImGui::EndDisabled();
+    ImGui::BeginDisabled(s.objects.size()<=1);
+    if(ImGui::Button("Delete selected",{-1,30})) {s.RemoveSelected();FrameCamera(s);}
+    deleteCenter={ImGui::GetItemRectMin().x+60,ImGui::GetItemRectMin().y+15};
+    ImGui::EndDisabled();
+    if(s.objects.size()==1) ImGui::TextDisabled("Keep at least one object");
+    ImGui::BeginChild("Object list",{0,115},ImGuiChildFlags_Borders);
+    const char* meshNames[]={"Sphere","Cube","Plane"};
+    for(std::size_t i=0;i<s.objects.size();++i) {
+        const auto& object=s.objects[i];
+        ImGui::PushID(object.id);
+        char label[80];
+        snprintf(label,sizeof(label),"%s %d / %s",meshNames[object.mesh],object.id,Renderer::ShaderName(object.effect));
+        if(ImGui::Selectable(label,s.selected==i)) s.selected=i;
+        ImGui::PopID();
+    }
+    ImGui::EndChild();
 }

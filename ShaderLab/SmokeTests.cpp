@@ -38,9 +38,34 @@ int RunRendererSmokeTest(Renderer& renderer) {
     if(before!=renderer.Fingerprint()) {std::cerr<<"Failed reload did not preserve the frame\n";return 1;}
     if(!renderer.Reload()) return 1;
     for(int mesh=0;mesh<3;++mesh) {
-        s.mesh=mesh; s.wireframe=true; renderer.Render(400,300,s,0);
+        s.Selected().mesh=mesh; s.wireframe=true; renderer.Render(400,300,s,0);
         if(glGetError()!=GL_NO_ERROR) return 1;
     }
+    // 서로 다른 객체를 함께 그리고, 한 객체의 재질/이동/삭제가 독립적으로 반영되는지 검증합니다.
+    Settings multiple;
+    multiple.floor=false;
+    renderer.Render(640,480,multiple,0);
+    auto singleFrame=renderer.Fingerprint();
+    if(!multiple.AddObject(1)) return 1;
+    multiple.Selected().position[0]=1.8f;
+    multiple.Selected().effect=2;
+    renderer.Render(640,480,multiple,0);
+    auto twoFrame=renderer.Fingerprint();
+    if(twoFrame==singleFrame || multiple.objects[0].effect!=0) return 1;
+    multiple.Selected().scale=0.5f;
+    renderer.Render(640,480,multiple,0);
+    if(renderer.Fingerprint()==twoFrame) return 1;
+    if(!multiple.DuplicateSelected() || multiple.objects.size()!=3) return 1;
+    if(multiple.Selected().effect!=2 || multiple.Selected().scale!=0.5f) return 1;
+    if(multiple.objects[1].id==multiple.objects[2].id) return 1;
+    if(!multiple.RemoveSelected() || !multiple.RemoveSelected()) return 1;
+    renderer.Render(640,480,multiple,0);
+    if(renderer.Fingerprint()!=singleFrame || multiple.RemoveSelected()) return 1;
+    for(std::size_t i=1;i<Settings::MaxObjects;++i) if(!multiple.AddObject(static_cast<int>(i%3))) return 1;
+    if(multiple.AddObject(0) || multiple.DuplicateSelected()) return 1;
+    FrameCamera(multiple);
+    renderer.Render(640,480,multiple,0);
+    if(glGetError()!=GL_NO_ERROR) return 1;
     Preset(s,3); s.wireframe=false; renderer.Render(960,640,s,0);
     if(!renderer.Capture("smoke-preview.png")) return 1;
     std::cout<<"PASS: five distinct effects, three meshes, resize, wireframe, shader reload and failure recovery.\n";
@@ -60,6 +85,18 @@ void UiSmokeTest::Inject(GLFWwindow* window, const EditorUI& editor) {
         io.AddMousePosEvent(editor.PauseCenter().x,editor.PauseCenter().y);
         io.AddMouseButtonEvent(0,testFrame==12);
     }
+    if(testFrame==24 || testFrame==25) {
+        auto pos=editor.AddCubeCenter(); io.AddMousePosEvent(pos.x,pos.y);
+        io.AddMouseButtonEvent(0,testFrame==24);
+    }
+    if(testFrame==28 || testFrame==29) {
+        auto pos=editor.DuplicateCenter(); io.AddMousePosEvent(pos.x,pos.y);
+        io.AddMouseButtonEvent(0,testFrame==28);
+    }
+    if(testFrame==32 || testFrame==33) {
+        auto pos=editor.DeleteCenter(); io.AddMousePosEvent(pos.x,pos.y);
+        io.AddMouseButtonEvent(0,testFrame==32);
+    }
     if(testFrame==15) glfwSetWindowSize(window,1100,720);
     if(testFrame==18) glfwSetWindowSize(window,1440,900);
     if(testFrame==20 || testFrame==21) {
@@ -69,11 +106,15 @@ void UiSmokeTest::Inject(GLFWwindow* window, const EditorUI& editor) {
 }
 // 주입한 입력이 실제 상태에 반영됐는지 확인하고 마지막 프레임을 PNG로 남깁니다.
 void UiSmokeTest::Verify(GLFWwindow* window, const Settings& s, int fw, int fh) {
-    if(testFrame>=3 && testFrame<=11 && testFrame%2==1 && s.effect!=(testFrame-2)/2)
+    if(testFrame>=3 && testFrame<=11 && testFrame%2==1 && s.Selected().effect!=(testFrame-2)/2)
         throw std::runtime_error("UI effect selection failed");
     if(testFrame==14 && s.animate) throw std::runtime_error("UI pause button failed");
-    if(testFrame==24) {
-        if(s.effect!=0) throw std::runtime_error("UI selection after resize failed");
+    if(testFrame==26 && (s.objects.size()!=2 || s.Selected().mesh!=1))
+        throw std::runtime_error("Add cube button failed");
+    if(testFrame==30 && s.objects.size()!=3) throw std::runtime_error("Duplicate button failed");
+    if(testFrame==34 && s.objects.size()!=2) throw std::runtime_error("Delete button failed");
+    if(testFrame==36) {
+        if(s.Selected().effect!=0) throw std::runtime_error("UI selection after resize failed");
         if(!SaveFramebufferPng("ui-preview.png",fw,fh) || glGetError()!=GL_NO_ERROR) throw std::runtime_error("UI capture failed");
         glfwSetWindowShouldClose(window,GLFW_TRUE);
         std::cout<<"PASS: five UI material selections, pause button, and resized editor rendering.\n";

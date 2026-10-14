@@ -22,7 +22,13 @@ public:
     void EndFrame(int width, int height);
     ImVec2 EffectCenter(int index) const { return effectCenters[index]; }
     ImVec2 PauseCenter() const { return pauseCenter; }
+    ImVec2 AddCubeCenter() const { return addCubeCenter; }
+    ImVec2 DuplicateCenter() const { return duplicateCenter; }
+    ImVec2 DeleteCenter() const { return deleteCenter; }
 private:
+    void DrawObjects(Settings& settings);
+    ImVec2 addCubeCenter{}, duplicateCenter{}, deleteCenter{};
+    int addCount = 1;
     void DrawToolbar(Renderer& renderer, Settings& settings, float& elapsed, float width);
     void DrawLibrary(Settings& settings);
     void DrawInspector(Renderer& renderer, Settings& settings, const std::filesystem::path& outputDirectory);

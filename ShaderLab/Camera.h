@@ -6,11 +6,12 @@ using Matrix4 = std::array<float, 16>;
 
 class OrbitCamera {
 public:
-    void Frame(bool largePlane);
+    void Frame(Vec3 focus, float radius);
     void Orbit(float deltaX, float deltaY);
     void Zoom(float wheel);
     Vec3 Position() const;
     Matrix4 ViewProjection(float aspect) const;
 private:
+    Vec3 target{0,0,0};
     float yaw = 0.55f, pitch = 0.28f, distance = 5.0f;
 };

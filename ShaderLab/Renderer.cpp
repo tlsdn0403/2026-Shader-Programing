@@ -84,26 +84,35 @@ void Renderer::Render(int w,int h,const Settings& s,float time) {
     glBindFramebuffer(GL_FRAMEBUFFER,framebuffer); glViewport(0,0,width,height);
     glEnable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_CULL_FACE);
     glClearColor(0.025f,0.036f,0.052f,1); glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
-    // 각 효과는 독립된 GPU 프로그램입니다. 선택한 프로그램을 활성화한 후 값을 전달합니다.
-    GLuint program=shaders.Program(s.effect);
-    glUseProgram(program);
     Vec3 eye = s.camera.Position();
     Matrix4 vp = s.camera.ViewProjection(static_cast<float>(width) / height);
+    // 같은 구/큐브/평면 GPU 버퍼를 재사용하고 객체마다 셰이더와 uniform만 바꿉니다.
+    auto drawObject = [&](const SceneObject& object, bool referenceFloor) {
+    GLuint program=shaders.Program(object.effect);
+    glUseProgram(program);
     // uniform은 C++에서 셰이더로 전달하는 값입니다. 사용하지 않는 변수의 위치(-1)는 OpenGL이 무시합니다.
     auto loc=[&](const char* name){return glGetUniformLocation(program,name);};
     glUniformMatrix4fv(loc("uViewProjection"),1,GL_FALSE,vp.data());
     glUniform3f(loc("uCamera"),eye.x,eye.y,eye.z);
     glUniform3f(loc("uLight"),std::cos(s.lightAngle)*4.0f,4.0f,std::sin(s.lightAngle)*4.0f);
-    glUniform3fv(loc("uColor"),1,s.color);
-    glUniform1f(loc("uTime"),time); glUniform1f(loc("uWave"),s.wave);
-    glUniform1f(loc("uRoughness"),s.roughness); glUniform1f(loc("uRim"),s.rim);
-    glUniform1f(loc("uDissolve"),s.dissolve); glUniform1f(loc("uPower"),s.lightPower); glUniform1f(loc("uAmbient"),s.ambient);
-    // 먼저 선택한 오브젝트를 그리고, 기준 바닥은 효과가 적용되지 않도록 uFloor로 구분합니다.
-    glUniform1i(loc("uFloor"),0);
-    glPolygonMode(GL_FRONT_AND_BACK,s.wireframe?GL_LINE:GL_FILL);
-    Draw(s.mesh==0?sphere:s.mesh==1?cube:plane);
+    glUniform3fv(loc("uColor"),1,object.color);
+    glUniform1f(loc("uTime"),time); glUniform1f(loc("uWave"),object.wave);
+    glUniform1f(loc("uRoughness"),object.roughness); glUniform1f(loc("uRim"),object.rim);
+    glUniform1f(loc("uDissolve"),object.dissolve); glUniform1f(loc("uPower"),s.lightPower); glUniform1f(loc("uAmbient"),s.ambient);
+    glUniform3fv(loc("uPosition"),1,object.position);
+    glUniform1f(loc("uScale"),object.scale);
+    glUniform1i(loc("uFloor"),referenceFloor?1:0);
+    glPolygonMode(GL_FRONT_AND_BACK,(!referenceFloor && s.wireframe)?GL_LINE:GL_FILL);
+    Draw(object.mesh==0?sphere:object.mesh==1?cube:plane);
+    };
+    for(const auto& object:s.objects) drawObject(object,false);
+    // 기준 바닥은 장면 전체에 한 번만 그립니다.
+    if(s.floor) {
+        SceneObject reference; reference.mesh=2;
+        reference.position[1]=-0.02f;
+        drawObject(reference,true);
+    }
     glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
-    if(s.floor && s.mesh!=2) { glUniform1i(loc("uFloor"),1); Draw(plane); }
     glBindVertexArray(0); glUseProgram(0); glBindFramebuffer(GL_FRAMEBUFFER,0);
 }
 int Renderer::Triangles(int mesh) const { return (mesh==0?sphere:mesh==1?cube:plane).count/3; }

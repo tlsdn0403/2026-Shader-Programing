@@ -1,7 +1,8 @@
 #version 330 core
-// 디졸브 효과: 3D 노이즈와 임계값으로 표면을 지우고 경계에 발광 색을 더합니다.
+// 디졸브 : 정점을 움직여 구멍을 만드는 것이 아니라 , 일부 픽셀을 그리지 않아 구멍이 난 것 처럼 보이게 만드는 기법.
 // Dissolve fragment shader. uFloor keeps the reference grid unaffected by the effect.
 in vec3 vPosition;
+in vec3 vLocalPosition;
 in vec3 vNormal;
 out vec4 fragColor;
 uniform vec3 uColor;
@@ -11,6 +12,8 @@ uniform float uPower, uAmbient, uRoughness;
 uniform float uDissolve;
 uniform bool uFloor;
 float hash(vec3 p) { return fract(sin(dot(p, vec3(127.1,311.7,74.7))) * 43758.5453); }
+
+
 // 격자 꼭짓점의 난수를 부드럽게 보간한 3D 값 노이즈입니다.
 float noise(vec3 p) {
     vec3 i=floor(p), f=fract(p); f=f*f*(3.0-2.0*f);
@@ -40,7 +43,7 @@ void main() {
     vec3 color=base*(uAmbient+diffuse*uPower*0.42)+vec3(spec*uPower*0.3);
     if(!uFloor) {
         // 크기가 다른 노이즈를 섞습니다. 임계값보다 작으면 해당 프래그먼트를 버립니다.
-        float value=noise(vPosition*4.0)*0.7+noise(vPosition*9.0)*0.3;
+        float value=noise(vLocalPosition*4.0)*0.7+noise(vLocalPosition*9.0)*0.3;
         if(value<uDissolve) discard;
         // 사라지는 경계 근처만 밝게 강조합니다. 별도의 블룸 후처리는 없습니다.
         float edge=1.0-smoothstep(0.0,0.065,value-uDissolve);

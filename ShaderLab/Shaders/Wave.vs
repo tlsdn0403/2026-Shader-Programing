@@ -5,6 +5,8 @@
 layout(location=0) in vec3 aPosition;
 layout(location=1) in vec3 aNormal;
 uniform mat4 uViewProjection;
+uniform vec3 uPosition;
+uniform float uScale;
 uniform bool uFloor;
 uniform float uTime;
 uniform float uWave;
@@ -25,8 +27,10 @@ void main() {
         float dz = -uWave * 3.0 * sin(a) * sin(b);
         n = normalize(vec3(n.x - dx*n.y, n.y, n.z - dz*n.y));
     }
-    vPosition = p;
+    // 객체별 균일 크기와 위치를 적용한 월드 좌표입니다.
+    vec3 worldPosition = p * uScale + uPosition;
+    vPosition = worldPosition;
     vNormal = n;
-    // 별도 모델 변환이 없어 현재 정점 좌표를 월드 좌표로 사용합니다. 뷰·투영 행렬만 곱합니다.
-    gl_Position = uViewProjection * vec4(p, 1.0);
+    // 월드 좌표에 카메라의 뷰·투영 행렬을 적용합니다.
+    gl_Position = uViewProjection * vec4(worldPosition, 1.0);
 }
