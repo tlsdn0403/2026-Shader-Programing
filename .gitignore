@@ -435,3 +435,11 @@ FodyWeavers.xsd
 # Additional files built by Visual Studio
 
 # End of https://www.toptal.com/developers/gitignore/api/visualstudio,c++
+
+# Shader Lab generated dependencies and builds
+/build/
+/build-win32/
+/smoke-preview.ppm
+/ui-preview.ppm
+/smoke-preview.png
+/ui-preview.png

@@ -1,0 +1,131 @@
+// 렌더링 순서: FBO 준비 → 셰이더 선택 → uniform 전달 → 메시/바닥 그리기.
+#include "Renderer.h"
+#include "ImageCapture.h"
+#include <algorithm>
+#include <cmath>
+#include <stdexcept>
+
+namespace {
+constexpr float pi = 3.14159265359f;
+Vec3 Cross(Vec3 a, Vec3 b) { return {a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x}; }
+float Dot(Vec3 a, Vec3 b) { return a.x*b.x+a.y*b.y+a.z*b.z; }
+Vec3 Unit(Vec3 v) { float d=std::sqrt(Dot(v,v)); return {v.x/d,v.y/d,v.z/d}; }
+// 정점 하나는 위치 xyz + 법선 xyz의 연속된 6개 float로 저장합니다.
+void Vertex(std::vector<float>& data,Vec3 p,Vec3 n) {
+    data.insert(data.end(),{p.x,p.y,p.z,n.x,n.y,n.z});
+}
+// 경도와 위도로 단위 구 표면의 위치를 계산합니다. 단위 구에서는 위치가 곧 법선입니다.
+Vec3 SpherePoint(int x,int y) {
+    float a=2*pi*x/64.0f,b=pi*y/32.0f;
+    return {std::sin(b)*std::cos(a),std::cos(b),std::sin(b)*std::sin(a)};
+}
+}
+
+// VBO에는 정점 데이터, VAO에는 셰이더 입력 위치와 데이터 배치 정보를 저장합니다.
+Renderer::Mesh Renderer::Upload(const std::vector<float>& data) {
+    Mesh m; m.count=static_cast<GLsizei>(data.size()/6);
+    glGenVertexArrays(1,&m.vao); glGenBuffers(1,&m.vbo);
+    glBindVertexArray(m.vao); glBindBuffer(GL_ARRAY_BUFFER,m.vbo);
+    glBufferData(GL_ARRAY_BUFFER,data.size()*sizeof(float),data.data(),GL_STATIC_DRAW);
+    for(GLuint i=0;i<2;++i) {
+        glEnableVertexAttribArray(i);
+        glVertexAttribPointer(i,3,GL_FLOAT,GL_FALSE,6*sizeof(float),reinterpret_cast<void*>(i*3*sizeof(float)));
+    }
+    glBindVertexArray(0); return m;
+}
+// 외부 모델 대신 구·큐브·세분화 평면을 생성하고 GPU로 업로드합니다.
+bool Renderer::Initialize(const std::string& shaderDirectory) {
+    if(!shaders.Initialize(shaderDirectory)) return false;
+    std::vector<float> data;
+    for(int y=0;y<32;++y) for(int x=0;x<64;++x) {
+        Vec3 a=SpherePoint(x,y),b=SpherePoint(x+1,y),c=SpherePoint(x+1,y+1),d=SpherePoint(x,y+1);
+        for(Vec3 p:{a,b,c,a,c,d}) Vertex(data,p,p);
+    }
+    sphere=Upload(data); data.clear();
+    const Vec3 normals[]={{1,0,0},{-1,0,0},{0,1,0},{0,-1,0},{0,0,1},{0,0,-1}};
+    for(Vec3 n:normals) {
+        Vec3 u=std::abs(n.y)>0.5f?Vec3{1,0,0}:Unit(Cross({0,1,0},n));
+        Vec3 v=Cross(n,u);
+        const int corners[6][2]={{-1,-1},{1,-1},{1,1},{-1,-1},{1,1},{-1,1}};
+        for(auto& c:corners) Vertex(data,{(n.x+u.x*c[0]+v.x*c[1])*0.8f,(n.y+u.y*c[0]+v.y*c[1])*0.8f,(n.z+u.z*c[0]+v.z*c[1])*0.8f},n);
+    }
+    // 평면은 물결 변형에 충분한 정점이 있도록 잘게 나눕니다. 기준 바닥으로도 재사용합니다.
+    cube=Upload(data); data.clear();
+    for(int z=0;z<64;++z) for(int x=0;x<64;++x) {
+        const int corners[6][2]={{0,0},{0,1},{1,1},{0,0},{1,1},{1,0}};
+        for(auto& c:corners) Vertex(data,{(x+c[0])/64.0f*8.0f-4.0f,-1.2f,(z+c[1])/64.0f*8.0f-4.0f},{0,1,0});
+    }
+    plane=Upload(data);
+    glGenFramebuffers(1,&framebuffer); glGenTextures(1,&colorTexture); glGenRenderbuffers(1,&depthBuffer);
+    return true;
+}
+// 미리보기 크기가 바뀔 때만 컬러 텍스처와 깊이 버퍼의 저장 공간을 다시 할당합니다.
+void Renderer::Resize(int w,int h) {
+    if(w==width && h==height) return;
+    width=w; height=h;
+    glBindTexture(GL_TEXTURE_2D,colorTexture);
+    glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,w,h,0,GL_RGBA,GL_UNSIGNED_BYTE,nullptr);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+    glBindRenderbuffer(GL_RENDERBUFFER,depthBuffer);
+    glRenderbufferStorage(GL_RENDERBUFFER,GL_DEPTH_COMPONENT24,w,h);
+    glBindFramebuffer(GL_FRAMEBUFFER,framebuffer);
+    glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,colorTexture,0);
+    glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_RENDERBUFFER,depthBuffer);
+    if(glCheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE) throw std::runtime_error("Preview framebuffer is incomplete");
+}
+// VAO가 지정한 정점 배열을 삼각형 단위로 그립니다.
+void Renderer::Draw(const Mesh& mesh) { glBindVertexArray(mesh.vao); glDrawArrays(GL_TRIANGLES,0,mesh.count); }
+// 화면에 직접 그리지 않고 FBO에 그립니다. 완성된 컬러 텍스처를 UI가 표시합니다.
+void Renderer::Render(int w,int h,const Settings& s,float time) {
+    Resize(std::clamp(w,1,4096),std::clamp(h,1,4096));
+    glBindFramebuffer(GL_FRAMEBUFFER,framebuffer); glViewport(0,0,width,height);
+    glEnable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_CULL_FACE);
+    glClearColor(0.025f,0.036f,0.052f,1); glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+    // 각 효과는 독립된 GPU 프로그램입니다. 선택한 프로그램을 활성화한 후 값을 전달합니다.
+    GLuint program=shaders.Program(s.effect);
+    glUseProgram(program);
+    Vec3 eye = s.camera.Position();
+    Matrix4 vp = s.camera.ViewProjection(static_cast<float>(width) / height);
+    // uniform은 C++에서 셰이더로 전달하는 값입니다. 사용하지 않는 변수의 위치(-1)는 OpenGL이 무시합니다.
+    auto loc=[&](const char* name){return glGetUniformLocation(program,name);};
+    glUniformMatrix4fv(loc("uViewProjection"),1,GL_FALSE,vp.data());
+    glUniform3f(loc("uCamera"),eye.x,eye.y,eye.z);
+    glUniform3f(loc("uLight"),std::cos(s.lightAngle)*4.0f,4.0f,std::sin(s.lightAngle)*4.0f);
+    glUniform3fv(loc("uColor"),1,s.color);
+    glUniform1f(loc("uTime"),time); glUniform1f(loc("uWave"),s.wave);
+    glUniform1f(loc("uRoughness"),s.roughness); glUniform1f(loc("uRim"),s.rim);
+    glUniform1f(loc("uDissolve"),s.dissolve); glUniform1f(loc("uPower"),s.lightPower); glUniform1f(loc("uAmbient"),s.ambient);
+    // 먼저 선택한 오브젝트를 그리고, 기준 바닥은 효과가 적용되지 않도록 uFloor로 구분합니다.
+    glUniform1i(loc("uFloor"),0);
+    glPolygonMode(GL_FRONT_AND_BACK,s.wireframe?GL_LINE:GL_FILL);
+    Draw(s.mesh==0?sphere:s.mesh==1?cube:plane);
+    glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
+    if(s.floor && s.mesh!=2) { glUniform1i(loc("uFloor"),1); Draw(plane); }
+    glBindVertexArray(0); glUseProgram(0); glBindFramebuffer(GL_FRAMEBUFFER,0);
+}
+int Renderer::Triangles(int mesh) const { return (mesh==0?sphere:mesh==1?cube:plane).count/3; }
+// 테스트용 화면 해시입니다. 같은 렌더링 조건에서 출력이 유지되는지 비교합니다.
+unsigned long long Renderer::Fingerprint() const {
+    std::vector<unsigned char> pixels(width*height*4);
+    glBindFramebuffer(GL_FRAMEBUFFER,framebuffer); glReadPixels(0,0,width,height,GL_RGBA,GL_UNSIGNED_BYTE,pixels.data()); glBindFramebuffer(GL_FRAMEBUFFER,0);
+    unsigned long long result=1469598103934665603ull;
+    for(unsigned char v:pixels) {result^=v; result*=1099511628211ull;}
+    return result;
+}
+// UI를 제외한 미리보기만 저장하기 위해 해당 FBO를 선택합니다.
+bool Renderer::Capture(const std::string& path) const {
+    glBindFramebuffer(GL_FRAMEBUFFER,framebuffer);
+    bool saved=SaveFramebufferPng(path,width,height);
+    glBindFramebuffer(GL_FRAMEBUFFER,0);
+    return saved;
+}
+// Application이 컨텍스트를 파괴하기 전에 호출합니다. 해제한 핸들은 0으로 초기화합니다.
+void Renderer::Shutdown() {
+    for(Mesh* m:{&sphere,&cube,&plane}) {glDeleteBuffers(1,&m->vbo);glDeleteVertexArrays(1,&m->vao);*m={};}
+    shaders.Shutdown();
+    glDeleteFramebuffers(1,&framebuffer); glDeleteTextures(1,&colorTexture); glDeleteRenderbuffers(1,&depthBuffer);
+    framebuffer=colorTexture=depthBuffer=0; width=height=0;
+}
