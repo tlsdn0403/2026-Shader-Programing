@@ -5,6 +5,8 @@
 #include <vector>
 #include "SceneSettings.h"
 #include "ShaderLibrary.h"
+#include "VoxelGI.h"
+#include "ClusterMesh.h"
 
 
 class Renderer {
@@ -20,8 +22,17 @@ public:
     int Triangles(int mesh) const;
     bool Capture(const std::string& path) const;
     unsigned long long Fingerprint() const;
+    const GeometryStats& Statistics() const { return stats; }
+    const VoxelGI& GI() const { return gi; }
+    double GpuMs() const { return gpuMs; }
 private:
-    struct Mesh { GLuint vao = 0, vbo = 0; GLsizei count = 0; };
+    VoxelGI gi;
+    GeometryStats stats;
+    GLuint timerQueries[2]{};
+    bool timerPending[2]{};
+    int timerIndex=0;
+    double gpuMs=0;
+    struct Mesh { GLuint vao = 0, vbo = 0; GLsizei count = 0; ClusterMesh clustered; };
     Mesh sphere, cube, plane;
     Mesh Upload(const std::vector<float>& vertices);
     void Resize(int width, int height);

@@ -19,6 +19,6 @@ public:
     static const char* Name(int effect);
     const std::string& Status() const { return status; }
 private:
-    std::array<GLuint, 5> programs{};
+    std::array<GLuint, 6> programs{};
     std::string directory, status;
 };

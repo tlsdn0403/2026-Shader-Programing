@@ -31,7 +31,7 @@ Renderer::Mesh Renderer::Upload(const std::vector<float>& data) {
         glEnableVertexAttribArray(i);
         glVertexAttribPointer(i,3,GL_FLOAT,GL_FALSE,6*sizeof(float),reinterpret_cast<void*>(i*3*sizeof(float)));
     }
-    glBindVertexArray(0); return m;
+    glBindVertexArray(0); m.clustered.Build(data); return m;
 }
 // 외부 모델 대신 구·큐브·세분화 평면을 생성하고 GPU로 업로드합니다.
 bool Renderer::Initialize(const std::string& shaderDirectory) {
@@ -56,6 +56,7 @@ bool Renderer::Initialize(const std::string& shaderDirectory) {
         for(auto& c:corners) Vertex(data,{(x+c[0])/64.0f*8.0f-4.0f,-1.2f,(z+c[1])/64.0f*8.0f-4.0f},{0,1,0});
     }
     plane=Upload(data);
+    glGenQueries(2,timerQueries);
     glGenFramebuffers(1,&framebuffer); glGenTextures(1,&colorTexture); glGenRenderbuffers(1,&depthBuffer);
     return true;
 }
@@ -78,9 +79,20 @@ void Renderer::Resize(int w,int h) {
 }
 // VAO가 지정한 정점 배열을 삼각형 단위로 그립니다.
 void Renderer::Draw(const Mesh& mesh) { glBindVertexArray(mesh.vao); glDrawArrays(GL_TRIANGLES,0,mesh.count); }
+
+
 // 화면에 직접 그리지 않고 FBO에 그립니다. 완성된 컬러 텍스처를 UI가 표시합니다.
 void Renderer::Render(int w,int h,const Settings& s,float time) {
     Resize(std::clamp(w,1,4096),std::clamp(h,1,4096));
+    gi.Update(s);
+    stats={};
+    // GPU 시간은 비동기 쿼리로 읽습니다. CPU 복셀 재계산 시간은 별도 표시합니다.
+    for(int i=0;i<2;++i) if(timerPending[i]) {
+        GLint ready=0;glGetQueryObjectiv(timerQueries[i],GL_QUERY_RESULT_AVAILABLE,&ready);
+        if(ready) {GLuint64 ns=0;glGetQueryObjectui64v(timerQueries[i],GL_QUERY_RESULT,&ns);gpuMs=ns/1e6;timerPending[i]=false;}
+    }
+    bool timed=!timerPending[timerIndex];
+    if(timed) glBeginQuery(GL_TIME_ELAPSED,timerQueries[timerIndex]);
     glBindFramebuffer(GL_FRAMEBUFFER,framebuffer); glViewport(0,0,width,height);
     glEnable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_CULL_FACE);
     glClearColor(0.025f,0.036f,0.052f,1); glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -90,20 +102,38 @@ void Renderer::Render(int w,int h,const Settings& s,float time) {
     auto drawObject = [&](const SceneObject& object, bool referenceFloor) {
     GLuint program=shaders.Program(object.effect);
     glUseProgram(program);
-    // uniform은 C++에서 셰이더로 전달하는 값입니다. 사용하지 않는 변수의 위치(-1)는 OpenGL이 무시합니다.
+    gi.Bind(program,s);
+    glUniform1f(glGetUniformLocation(program,"uEmission"),referenceFloor?0.f:object.emission);
+    // C++에서 셰이더로 전달하는 값입니다.
     auto loc=[&](const char* name){return glGetUniformLocation(program,name);};
     glUniformMatrix4fv(loc("uViewProjection"),1,GL_FALSE,vp.data());
     glUniform3f(loc("uCamera"),eye.x,eye.y,eye.z);
-    glUniform3f(loc("uLight"),std::cos(s.lightAngle)*4.0f,4.0f,std::sin(s.lightAngle)*4.0f);
-    glUniform3fv(loc("uColor"),1,object.color);
+    glUniform3fv(loc("uLight"),1,s.light.position);
+    glUniform3fv(loc("uLightColor"),1,s.light.color);
+    Vec3 direction=s.light.Direction();
+    glUniform3f(loc("uLightDirection"),direction.x,direction.y,direction.z);
+    glUniform1i(loc("uLightType"),s.light.type);
+    glUniform1f(loc("uLightRange"),std::max(s.light.range,0.1f));
+    float inner=std::clamp(s.light.innerAngle,0.f,88.f);
+    float outer=std::clamp(s.light.outerAngle,inner+0.1f,89.f);
+    glUniform1f(loc("uSpotInnerCos"),std::cos(inner*pi/180));
+    glUniform1f(loc("uSpotOuterCos"),std::cos(outer*pi/180));
+    glUniform3fv(loc("uBaseColor"),1,object.color);
     glUniform1f(loc("uTime"),time); glUniform1f(loc("uWave"),object.wave);
     glUniform1f(loc("uRoughness"),object.roughness); glUniform1f(loc("uRim"),object.rim);
-    glUniform1f(loc("uDissolve"),object.dissolve); glUniform1f(loc("uPower"),s.lightPower); glUniform1f(loc("uAmbient"),s.ambient);
+    glUniform1f(loc("uDissolve"),object.dissolve); glUniform1f(loc("uPower"),s.light.enabled?s.light.intensity:0.f); glUniform1f(loc("uAmbient"),s.ambient);
     glUniform3fv(loc("uPosition"),1,object.position);
     glUniform1f(loc("uScale"),object.scale);
     glUniform1i(loc("uFloor"),referenceFloor?1:0);
+
     glPolygonMode(GL_FRONT_AND_BACK,(!referenceFloor && s.wireframe)?GL_LINE:GL_FILL);
-    Draw(object.mesh==0?sphere:object.mesh==1?cube:plane);
+    const Mesh& mesh=object.mesh==0?sphere:object.mesh==1?cube:plane;
+    if(!referenceFloor && (s.clusterLOD || s.clusterCulling || s.researchView>=2))
+        mesh.clustered.Draw(program,object,s,vp,height,stats);
+    else {
+        Draw(mesh);
+        if(!referenceFloor) {stats.fullTriangles+=mesh.count/3;stats.submittedTriangles+=mesh.count/3;++stats.drawCalls;++stats.lodObjects[0];}
+    }
     };
     for(const auto& object:s.objects) drawObject(object,false);
     // 기준 바닥은 장면 전체에 한 번만 그립니다.
@@ -114,6 +144,7 @@ void Renderer::Render(int w,int h,const Settings& s,float time) {
     }
     glPolygonMode(GL_FRONT_AND_BACK,GL_FILL);
     glBindVertexArray(0); glUseProgram(0); glBindFramebuffer(GL_FRAMEBUFFER,0);
+    if(timed) {glEndQuery(GL_TIME_ELAPSED);timerPending[timerIndex]=true;timerIndex=1-timerIndex;}
 }
 int Renderer::Triangles(int mesh) const { return (mesh==0?sphere:mesh==1?cube:plane).count/3; }
 // 테스트용 화면 해시입니다. 같은 렌더링 조건에서 출력이 유지되는지 비교합니다.
@@ -124,6 +155,7 @@ unsigned long long Renderer::Fingerprint() const {
     for(unsigned char v:pixels) {result^=v; result*=1099511628211ull;}
     return result;
 }
+
 // UI를 제외한 미리보기만 저장하기 위해 해당 FBO를 선택합니다.
 bool Renderer::Capture(const std::string& path) const {
     glBindFramebuffer(GL_FRAMEBUFFER,framebuffer);
@@ -133,7 +165,10 @@ bool Renderer::Capture(const std::string& path) const {
 }
 // Application이 컨텍스트를 파괴하기 전에 호출합니다. 해제한 핸들은 0으로 초기화합니다.
 void Renderer::Shutdown() {
-    for(Mesh* m:{&sphere,&cube,&plane}) {glDeleteBuffers(1,&m->vbo);glDeleteVertexArrays(1,&m->vao);*m={};}
+    for(Mesh* m:{&sphere,&cube,&plane}) {m->clustered.Shutdown();glDeleteBuffers(1,&m->vbo);glDeleteVertexArrays(1,&m->vao);*m={};}
+    gi.Shutdown();
+    glDeleteQueries(2,timerQueries);timerQueries[0]=timerQueries[1]=0;
+    timerPending[0]=timerPending[1]=false;
     shaders.Shutdown();
     glDeleteFramebuffers(1,&framebuffer); glDeleteTextures(1,&colorTexture); glDeleteRenderbuffers(1,&depthBuffer);
     framebuffer=colorTexture=depthBuffer=0; width=height=0;

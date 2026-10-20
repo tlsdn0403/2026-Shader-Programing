@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="Current" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup Label="ProjectConfigurations">
     <ProjectConfiguration Include="Debug|x64"><Configuration>Debug</Configuration><Platform>x64</Platform></ProjectConfiguration>
@@ -33,11 +33,21 @@
     <LocalDebuggerWorkingDirectory>$(LabBuildDir)\$(Configuration)</LocalDebuggerWorkingDirectory>
     <DebuggerFlavor>WindowsLocalDebugger</DebuggerFlavor>
     <NMakePreprocessorDefinitions>WIN32;_WINDOWS;NOMINMAX;GLEW_STATIC;$(NMakePreprocessorDefinitions)</NMakePreprocessorDefinitions>
-    <NMakeIncludeSearchPath>$(LabRoot)\ShaderLab;$(LabBuildDir)\_deps\imgui-src;$(LabBuildDir)\_deps\imgui-src\backends;$(LabBuildDir)\_deps\glfw-src\include;$(LabBuildDir)\_deps\glew-src\include;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
+    <NMakeIncludeSearchPath>$(LabRoot)\ShaderLab;$(LabBuildDir)\_deps\imgui-src;$(LabBuildDir)\_deps\imgui-src\backends;$(LabBuildDir)\_deps\glfw-src\include;$(LabBuildDir)\_deps\glew-src\include;$(LabBuildDir)\_deps\meshoptimizer-src\src;$(NMakeIncludeSearchPath)</NMakeIncludeSearchPath>
     <NMakeForcedIncludes>$(NMakeForcedIncludes)</NMakeForcedIncludes>
     <AdditionalOptions>/std:c++17 /utf-8 $(AdditionalOptions)</AdditionalOptions>
   </PropertyGroup>
   <ItemGroup>
+    <ClCompile Include="..\ShaderLab\VoxelGI.cpp"></ClCompile>
+    <ClInclude Include="..\ShaderLab\VoxelGI.h"></ClInclude>
+    <ClCompile Include="..\ShaderLab\ClusterMesh.cpp"></ClCompile>
+    <ClInclude Include="..\ShaderLab\ClusterMesh.h"></ClInclude>
+    <None Include="..\ShaderLab\Shaders\Research.glsl"></None>
+    <ClCompile Include="..\ShaderLab\Light.cpp"></ClCompile>
+    <ClInclude Include="..\ShaderLab\Light.h"></ClInclude>
+    <ClCompile Include="..\ShaderLab\LightEditor.cpp"></ClCompile>
+    <ClInclude Include="..\ShaderLab\LightEditor.h"></ClInclude>
+    <None Include="..\ShaderLab\Shaders\Light.glsl" />
     <ClCompile Include="..\ShaderLab\main.cpp" />
     <ClCompile Include="..\ShaderLab\Application.cpp" />
     <ClInclude Include="..\ShaderLab\Application.h" />
@@ -58,7 +68,9 @@
     <ClInclude Include="..\ShaderLab\Renderer.h" />
     <ClInclude Include="LoadPng.h" />
     <None Include="..\ShaderLab\Shaders\Lighting.vs" />
+    <None Include="..\ShaderLab\Shaders\Phong.vs" />
     <None Include="..\ShaderLab\Shaders\Lighting.fs" />
+    <None Include="..\ShaderLab\Shaders\Phong.fs" />
     <None Include="..\ShaderLab\Shaders\Toon.vs" />
     <None Include="..\ShaderLab\Shaders\Toon.fs" />
     <None Include="..\ShaderLab\Shaders\Fresnel.vs" />

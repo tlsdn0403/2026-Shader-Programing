@@ -1,36 +1,51 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <Filter Include="Shader Lab"><UniqueIdentifier>{3A0EB98F-2F36-43F5-B354-68BC5D451012}</UniqueIdentifier></Filter>
-    <Filter Include="Shaders"><UniqueIdentifier>{AEC38174-CFF7-4995-A541-E921521A4A72}</UniqueIdentifier></Filter>
+    <Filter Include="vs"><UniqueIdentifier>{BAD5436A-637F-4F41-99FC-5715DCF3E6F8}</UniqueIdentifier><Extensions>vs</Extensions></Filter>
+    <Filter Include="fs"><UniqueIdentifier>{1ED6750A-14F8-4D0C-AB78-65B87359455E}</UniqueIdentifier><Extensions>fs</Extensions></Filter>
+    <Filter Include="h"><UniqueIdentifier>{BEA8E20A-D6A4-4795-9883-2B6522464C17}</UniqueIdentifier><Extensions>h</Extensions></Filter>
+    <Filter Include="cpp"><UniqueIdentifier>{BD9C27D3-AFA9-49AE-B68E-C318B6FFAC13}</UniqueIdentifier><Extensions>cpp</Extensions></Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\ShaderLab\main.cpp"><Filter>Shader Lab</Filter></ClCompile>
-    <ClCompile Include="..\ShaderLab\Application.cpp"><Filter>Shader Lab</Filter></ClCompile>
-    <ClInclude Include="..\ShaderLab\Application.h"><Filter>Shader Lab</Filter></ClInclude>
-    <ClCompile Include="..\ShaderLab\EditorUI.cpp"><Filter>Shader Lab</Filter></ClCompile>
-    <ClInclude Include="..\ShaderLab\EditorUI.h"><Filter>Shader Lab</Filter></ClInclude>
-    <ClCompile Include="..\ShaderLab\ShaderLibrary.cpp"><Filter>Shader Lab</Filter></ClCompile>
-    <ClInclude Include="..\ShaderLab\ShaderLibrary.h"><Filter>Shader Lab</Filter></ClInclude>
-    <ClCompile Include="..\ShaderLab\Camera.cpp"><Filter>Shader Lab</Filter></ClCompile>
-    <ClInclude Include="..\ShaderLab\Camera.h"><Filter>Shader Lab</Filter></ClInclude>
-    <ClCompile Include="..\ShaderLab\SceneSettings.cpp"><Filter>Shader Lab</Filter></ClCompile>
-    <ClInclude Include="..\ShaderLab\SceneSettings.h"><Filter>Shader Lab</Filter></ClInclude>
-    <ClCompile Include="..\ShaderLab\ImageCapture.cpp"><Filter>Shader Lab</Filter></ClCompile>
-    <ClInclude Include="..\ShaderLab\ImageCapture.h"><Filter>Shader Lab</Filter></ClInclude>
-    <ClCompile Include="..\ShaderLab\SmokeTests.cpp"><Filter>Shader Lab</Filter></ClCompile>
-    <ClInclude Include="..\ShaderLab\SmokeTests.h"><Filter>Shader Lab</Filter></ClInclude>
-    <ClCompile Include="..\ShaderLab\Renderer.cpp"><Filter>Shader Lab</Filter></ClCompile>
-    <ClInclude Include="..\ShaderLab\Renderer.h"><Filter>Shader Lab</Filter></ClInclude>
-    <None Include="..\ShaderLab\Shaders\Lighting.vs"><Filter>Shaders</Filter></None>
-    <None Include="..\ShaderLab\Shaders\Lighting.fs"><Filter>Shaders</Filter></None>
-    <None Include="..\ShaderLab\Shaders\Toon.vs"><Filter>Shaders</Filter></None>
-    <None Include="..\ShaderLab\Shaders\Toon.fs"><Filter>Shaders</Filter></None>
-    <None Include="..\ShaderLab\Shaders\Fresnel.vs"><Filter>Shaders</Filter></None>
-    <None Include="..\ShaderLab\Shaders\Fresnel.fs"><Filter>Shaders</Filter></None>
-    <None Include="..\ShaderLab\Shaders\Dissolve.vs"><Filter>Shaders</Filter></None>
-    <None Include="..\ShaderLab\Shaders\Dissolve.fs"><Filter>Shaders</Filter></None>
-    <None Include="..\ShaderLab\Shaders\Wave.vs"><Filter>Shaders</Filter></None>
-    <None Include="..\ShaderLab\Shaders\Wave.fs"><Filter>Shaders</Filter></None>
+    <ClCompile Include="..\ShaderLab\VoxelGI.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\VoxelGI.h"><Filter>h</Filter></ClInclude>
+    <ClCompile Include="..\ShaderLab\ClusterMesh.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\ClusterMesh.h"><Filter>h</Filter></ClInclude>
+    <ClCompile Include="..\ShaderLab\Light.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\Light.h"><Filter>h</Filter></ClInclude>
+    <ClCompile Include="..\ShaderLab\LightEditor.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\LightEditor.h"><Filter>h</Filter></ClInclude>
+    <None Include="..\ShaderLab\Shaders\Light.glsl" />
+    <ClCompile Include="..\ShaderLab\main.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClCompile Include="..\ShaderLab\Application.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\Application.h"><Filter>h</Filter></ClInclude>
+    <ClCompile Include="..\ShaderLab\EditorUI.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\EditorUI.h"><Filter>h</Filter></ClInclude>
+    <ClCompile Include="..\ShaderLab\ShaderLibrary.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\ShaderLibrary.h"><Filter>h</Filter></ClInclude>
+    <ClCompile Include="..\ShaderLab\Camera.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\Camera.h"><Filter>h</Filter></ClInclude>
+    <ClCompile Include="..\ShaderLab\SceneSettings.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\SceneSettings.h"><Filter>h</Filter></ClInclude>
+    <ClCompile Include="..\ShaderLab\ImageCapture.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\ImageCapture.h"><Filter>h</Filter></ClInclude>
+    <ClCompile Include="..\ShaderLab\SmokeTests.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\SmokeTests.h"><Filter>h</Filter></ClInclude>
+    <ClCompile Include="..\ShaderLab\Renderer.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClCompile Include="LoadPng.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\Renderer.h"><Filter>h</Filter></ClInclude>
+    <ClInclude Include="LoadPng.h"><Filter>h</Filter></ClInclude>
+    <None Include="..\ShaderLab\Shaders\Lighting.vs"><Filter>vs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Phong.vs"><Filter>vs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Lighting.fs"><Filter>fs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Phong.fs"><Filter>fs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Toon.vs"><Filter>vs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Toon.fs"><Filter>fs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Fresnel.vs"><Filter>vs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Fresnel.fs"><Filter>fs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Dissolve.vs"><Filter>vs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Dissolve.fs"><Filter>fs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Wave.vs"><Filter>vs</Filter></None>
+    <None Include="..\ShaderLab\Shaders\Wave.fs"><Filter>fs</Filter></None>
   </ItemGroup>
 </Project>

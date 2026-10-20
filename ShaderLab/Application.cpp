@@ -59,7 +59,8 @@ int Application::Run(int argc, char** argv) {
     const std::string mode = argc > 1 ? argv[1] : "";
     const bool smoke = mode == "--smoke-test", uiSmoke = mode == "--ui-smoke-test";
     try {
-        Initialize(smoke || uiSmoke, argv[0]);
+        Initialize(smoke || uiSmoke || mode == "--research-test", argv[0]);
+        if (mode == "--research-test") return RunResearchTest(renderer);
         if (smoke) return RunRendererSmokeTest(renderer);
         editor.Initialize(window);
         RunEditor(uiSmoke);

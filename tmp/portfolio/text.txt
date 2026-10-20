@@ -1,0 +1,205 @@
+
+--- PAGE 1 ---
+G A M E  C L I E N T  P O R T F O L I O
+플 레 이  경 험 을
+구 조 로  구 현 하 는
+클 라 이 언 트  프 로 그 래 머
+ 
+박 신 우  P a r k  S h i n  W o o
+E - M a i l :  t l s d n 0 4 0 3 @ g m a i l . c o m
+G i t H u b :  g i t h u b . c o m / t l s d n 0 4 0 3
+C + + 1 7  ·  W i n 3 2  A P I  ·  D i r e c t 2 D  ·  D i r e c t W r i t e
+B U B B L E  R O G U E
+2 D  W a t e r  G u n  A c t i o n  R o g u e l i k e
+R A N D O M  D U N G E O N
+B O S S
+U P G R A D E
+0 1
+
+--- PAGE 2 ---
+P R O J E C T  0 2
+ 
+ 
+ 
+R A N D O M  D U N G E O N
+B O S S
+U P G R A D E
+P R O J E C T  I N D E X
+주 요  프 로 젝 트
+0 3
+P R O J E C T  0 3
+P R O J E C T  0 4
+P R O J E C T  0 1
+감 염 :  죽 음 의  도 시
+버 블 로 그
+네 트 워 크  프 로 젝 트
+F l i c k  D o m
+
+--- PAGE 3 ---
+PROJECT 01 / PAGE 01
+감염 : 죽음의  도시
+03
+기간 2025.12.20 - 2026.07.08
+개발인원 3 인팀
+엔진 Unreal Engine 5 · C++
+장르 Co-op TPS · Zombie Survival
+작품  설명 2025.12.20 - 2026.07.08
+
+--- PAGE 4 ---
+PROJECT 01 / PAGE 02
+팀원과의  소통방법
+04
+계획서  작성 보고서를  통한  진행상황  보고
+조장으로서  개발  일정을  함께  짜고 , 보고서를  매주  전송하며 , 서로의  진행상황을  공유하였습니다 .
+
+--- PAGE 5 ---
+코드  작성
+PROJECT 01 / PAGE 03
+이  프로젝트에서  맡은  역할
+05
+좀비  신체  분리
+구조  설계
+
+
+--- PAGE 6 ---
+PROJECT 01 · 감염 : 죽음의  도시  / PAGE 04 06
+이  프로젝트에서  맡은  역할
+좀 비  신 체  분 리
+하 체  분 리  →  기 어 가 기
+
+--- PAGE 7 ---
+PROJECT 01 · 감염 : 죽음의  도시  / PAGE 05 07
+이  프로젝트에서  맡은  역할
+트 럭  운 전 자  시 점
+트 럭  기 관 총  사 용 자  시 점
+
+--- PAGE 8 ---
+N E T W O R K  G A M E  P R O G R A M M I N G  /  P A G E  0 1
+F a l l  G u y s  N e t w o r k
+GITHUB
+TEAM PROJECT
+1 1
+프 로 젝 트  이 름
+NGP Fall Guys Network
+장 르
+3D 네 트 워 크  장 애 물  액 션
+설 명
+C++ / OpenGL 로 컬  게 임 을   네 트 워 크  TCP/IP
+Client–Server 구 조 로  확 장 한  팀  프 로 젝 트
+개 발  인 원
+3 명
+담 당  역 할
+네 트 워 크  구 조  설 계 , Character Packet 송 수 신 ,
+접 속  순 서  기 반  번 호  부 여 , AABB 충 돌  판 정
+개 발  언 어
+C++
+사 용  IDE
+Visual Studio 2022
+기 술
+OpenGL · WinSock TCP/IP · GitHub
+제 작  기 간
+2025.11.2 ~ 2025.12.5
+
+--- PAGE 9 ---
+N E T W O R K  G A M E  P R O G R A M M I N G  /  P A G E  0 2
+네 트 워 크  구 조  설 계
+D E S I G N  G O A L
+L o w  L e v e l  D e s i g n
+01
+접 속  및  식 별
+Accept 순 서 에  따 라  캐 릭 터  번 호 를  부 여
+하 고  클 라 이 언 트 별  스 레 드 를  생 성
+02
+C2S 상 태  수 집
+클 라 이 언 트 가  입 력 과  Character 상 태 를
+서 버 로  전 송
+03
+서 버  판 정
+서 버 에 서  캐 릭 터 · 장 애 물  AABB
+Collision 과  도 착  상 태 를  확 인
+04
+S2C 상 태  전 파
+갱 신 된  상 태 를  각  클 라 이 언 트 에  전 달 해
+동 일 한  장 면 을  렌 더 링
+1 2
+C o n n e c t ( )
+A c c e p t ( )  +  P l a y e r  I D
+C 2 S _ C H A R A C T E R
+S e r v e r  U p d a t e
+S 2 C _ C H A R A C T E R
+
+--- PAGE 10 ---
+N E T W O R K  G A M E  P R O G R A M M I N G  /  P A G E  0 3
+이  프 로 젝 트 에 서  맡 은  역 할
+1 3
+플 레 이 어 간  동 기 화
+플 레 이 어 ,  장 애 물  동 기 화
+
+--- PAGE 11 ---
+개 발  인 원
+담 당  역 할
+제 작  기 간
+A I  모 델
+프 로 젝 트  이 름
+장 르
+설 명
+개 발  언 어
+사 용  I D E
+F l i c k D o m  ( A I  V I B E  C O D I N G )
+1  V S  1  전 략  플 릭  보 드 게 임
+디 스 크 를  튕 겨  보 드  칸 을  차 지 하 고  카 드  패 턴 을
+완 성 해  점 수 를  겨 루 는  물 리  기 반  파 티  게 임
+팀  프 로 젝 트
+U n i t y  M C P  기 반  구 현  반 복 ,  멀 티 플 레 이  흐 름 ,
+U I / U X ,  사 운 드  제 작  및  적 용
+C #
+U n i t y  6  E d i t o r ,  V S  C o d e ,  B l e n d e r ,
+S u b s t a n c e  3 D  D e s i g n e r
+G P T - 5  C o d e x ,  U n i t y  M C P ,  B l e n d e r  M C P ,
+S u b s t a n c e  M C P ,  V A R C O  A I  S o u n d
+2 0 2 6 . 0 7 . 0 1  ~  2 0 2 6 . 0 8 . 1 0
+G I T H U B
+V I D E O
+G A M E  P L A Y
+T e a m  P r o j e c t
+F l i c k D o m  /  P A G E  0 1
+F l i c k D o m  
+( A I  V I B E  C O D I N G )
+1 4
+
+--- PAGE 12 ---
+
+
+--- PAGE 13 ---
+A I  활 용  능 력  /  P A G E  0 1
+A I / M C P  기 반  개 발  
+16
+U n i t y  M C P
+U n i t y  E d i t o r 와  A I  에 이 전 트 를  연 결 해  씬 ,  오 브 젝 트 ,  컴 포 넌 트  작 업 을  빠 르 게  확
+인 하 고  반 복 했 습 니 다 .
+B l e n d e r  M C P
+보 드 ,  디 스 크 ,  소 품  리 소 스 의  비 율 과  배 치  목 적 을  정 리 하 며  3 D  제 작  과 정 을  보 조
+했 습 니 다 .
+
+
+--- PAGE 14 ---
+F l i c k D o m  /  P A G E  0 3
+담 당  역 할
+17
+0 1
+C l i e n t
+보 드  규 칙 과  플 레 이  흐 름  구 현
+5×5 Board 점 령  Logic, Cell 선 택 · 배 치  후 보  처 리 , Card Patt ern Matching, Stage 진 행 , Monkey 조 작 ·Camera 흐 름 , Main Menu 를  구 현 했 습 니 다 .
+0 2
+S e r v e r
+턴  FSM 과  멀 티 플 레 이  상 태  전 환
+초 기  Host/Client 동 기 화  기 반  위 에 서  FSM 기 반  턴  흐 름 과  멀 티 플 레 이  상 태  전 환 을  연 결 하 고  Network 구 조 를  수 정 했 습 니 다 .
+0 3
+B u i l d
+WebGL 배 포 와  브 라 우 저  검 증
+WebGL Build· 배 포  환 경 을  구 성 하 고  실 제  브 라 우 저 에 서  접 속 ,  게 임  진 행 , 상 태  동 기 화 를  검 증 해  최 종  Release 까 지  마 무 리 했 습 니 다 .
+
+--- PAGE 15 ---
+읽 어 주 셔 서
+감 사 합 니 다 .
+1 7

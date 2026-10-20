@@ -46,22 +46,28 @@ GLuint BuildProgram(const std::string& vertex,const std::string& fragment) {
 }
 // UI의 효과 번호와 실제 파일 이름을 연결합니다: Lighting.vs + Lighting.fs 등.
 const char* ShaderLibrary::Name(int effect) {
-    static const char* names[]={"Lighting","Toon","Fresnel","Dissolve","Wave"};
-    return names[std::clamp(effect,0,4)];
+    static const char* names[]={"Lighting","Toon","Fresnel","Dissolve","Wave","Phong"};
+    return names[std::clamp(effect,0,5)];
 }
 // 모든 프로그램을 임시로 생성합니다. 전부 성공한 경우에만 기존 세트를 교체합니다.
 bool ShaderLibrary::Reload() {
-    std::array<GLuint,5> next{};
+    std::array<GLuint,6> next{};
     int effect=0;
     try {
-        for(;effect<5;++effect) {
+        for(;effect<6;++effect) {
             std::string base=directory+"/"+Name(effect);
-            next[effect]=BuildProgram(Read(base+".vs"),Read(base+".fs"));
+            std::string fragment=Read(base+".fs");
+            for(const char* shared:{"Light.glsl","Research.glsl"}) {
+                const std::string include=std::string("#include \"")+shared+"\"";
+                auto at=fragment.find(include);
+                if(at!=std::string::npos) fragment.replace(at,include.size(),Read(directory+"/"+shared));
+            }
+            next[effect]=BuildProgram(Read(base+".vs"),fragment);
         }
         // Commit only after every pair links, so a failed reload preserves all effects.
         for(GLuint old:programs) glDeleteProgram(old);
         programs=next;
-        status="All 5 shader pairs ready. Reload preserves all programs on errors.";
+        status="All 6 shader pairs ready. Reload preserves all programs on errors.";
         return true;
     } catch(const std::exception& e) {
         for(GLuint pending:next) glDeleteProgram(pending);
@@ -71,7 +77,7 @@ bool ShaderLibrary::Reload() {
 }
 // 문자열로 전달된 셰이더 한 쌍을 재컴파일합니다. 주로 오류 복구 테스트에 사용합니다.
 bool ShaderLibrary::ReloadFrom(const std::string& vertex,const std::string& fragment,int effect) {
-    if(effect<0 || effect>=5) {status="Invalid effect index";return false;}
+    if(effect<0 || effect>=6) {status="Invalid effect index";return false;}
     try {
         GLuint next=BuildProgram(vertex,fragment);
         glDeleteProgram(programs[effect]); programs[effect]=next;
@@ -88,7 +94,7 @@ bool ShaderLibrary::Initialize(const std::string& shaderDirectory) {
     return Reload();
 }
 GLuint ShaderLibrary::Program(int effect) const {
-    return programs[std::clamp(effect, 0, 4)];
+    return programs[std::clamp(effect, 0, 5)];
 }
 // 프로그램은 컨텍스트가 살아 있을 때 삭제해야 합니다. 중복 호출해도 삭제하지 않도록 0으로 만듭니다.
 void ShaderLibrary::Shutdown() {
