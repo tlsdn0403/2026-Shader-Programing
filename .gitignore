@@ -443,3 +443,10 @@ FodyWeavers.xsd
 /ui-preview.ppm
 /smoke-preview.png
 /ui-preview.png
+
+# Local portfolio documents, exports, and working files
+/portfolio/
+/portfolio.zip
+/output/pdf/
+/tmp/portfolio/
+/tmp/pdfs/
