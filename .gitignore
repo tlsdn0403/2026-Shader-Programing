@@ -444,9 +444,6 @@ FodyWeavers.xsd
 /smoke-preview.png
 /ui-preview.png
 
-# Local portfolio documents, exports, and working files
-/portfolio/
+# Local portfolio archive and temporary working files
 /portfolio.zip
-/output/pdf/
-/tmp/portfolio/
-/tmp/pdfs/
+/tmp/
