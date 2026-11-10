@@ -28,9 +28,13 @@ add_executable(ShaderLab
   ShaderLab/main.cpp ShaderLab/Application.cpp ShaderLab/EditorUI.cpp
   ShaderLab/Renderer.cpp ShaderLab/ShaderLibrary.cpp ShaderLab/Camera.cpp
   ShaderLab/SceneSettings.cpp ShaderLab/ImageCapture.cpp ShaderLab/SmokeTests.cpp
-  ShaderLab/VoxelGI.cpp ShaderLab/ClusterMesh.cpp ShaderLab/Light.cpp ShaderLab/LightEditor.cpp
+  ShaderLab/VoxelGI.cpp ShaderLab/ClusterMesh.cpp ShaderLab/Light.cpp ShaderLab/LightEditor.cpp ShaderLab/ObjectEditor.cpp
+  ShaderLab/TextureLibrary.cpp
   SimpleGame/LoadPng.cpp)
 target_link_libraries(ShaderLab PRIVATE lab_ui libglew_static meshoptimizer)
+if(WIN32)
+  target_link_libraries(ShaderLab PRIVATE windowscodecs ole32 comdlg32)
+endif()
 target_compile_definitions(ShaderLab PRIVATE NOMINMAX)
 if(MSVC)
   target_compile_options(ShaderLab PRIVATE /W4 /utf-8)
@@ -60,3 +64,5 @@ enable_testing()
 add_test(NAME ShaderLabSmoke COMMAND ShaderLab --smoke-test)
 add_test(NAME ShaderLabUiSmoke COMMAND ShaderLab --ui-smoke-test)
 add_test(NAME ShaderLabResearch COMMAND ShaderLab --research-test)
+
+add_test(NAME ShaderLabTexture COMMAND ShaderLab --texture-test)

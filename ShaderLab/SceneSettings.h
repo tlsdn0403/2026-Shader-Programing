@@ -2,15 +2,28 @@
 #pragma once
 #include "Light.h"
 #include <vector>
+#include <string>
 #include <cstddef>
 
 struct SceneObject {
+    // 객체별 이미지 설정. 복제한 객체는 같은 GPU 이미지를 공유합니다.
+    std::string texturePath;
+    bool textureEnabled=true, textureTint=false;
+    float textureRepeat[2]={1,1};
     int id = 1;
     int effect = 0, mesh = 0;
     float color[3] = {0.22f, 0.65f, 0.83f};
     float roughness = 0.32f, rim = 2.6f, dissolve = 0.3f, wave = 0.16f;
     float position[3] = {0, 0, 0};
-    float scale = 1.0f; // 양수 균일 스케일: 법선 방향은 변하지 않습니다.
+    float rotation[3]={0,0,0}; // 로컬 XYZ 오일러 각도(도), Rz * Ry * Rx 순서
+    float axisScale[3]={1,1,1};
+    std::array<float,9> RotationMatrix() const;
+    Vec3 ToWorld(Vec3 p) const;
+    Vec3 ToLocal(Vec3 p) const;
+    Vec3 WorldNormal(Vec3 n) const;
+    float MaxScale() const;
+    float MinScale() const;
+    float scale = 1.0f; // 전체 크기 배율. axisScale과 곱해 최종 크기를 계산합니다.
     float emission = 0.0f;
 };
 
@@ -34,7 +47,7 @@ struct Settings {
     SceneObject& Selected() { return objects.at(selected); }
     const SceneObject& Selected() const { return objects.at(selected); }
     bool AddObject(int mesh);
-    bool DuplicateSelected();
+    bool DuplicateSelected(bool keepPosition = false);
     bool RemoveSelected(); // Inspector가 항상 유효하도록 마지막 객체 하나는 유지합니다.
 };
 void FrameCamera(Settings& settings);

@@ -5,6 +5,7 @@
 #include <imgui.h>
 #include "SceneSettings.h"
 #include "LightEditor.h"
+#include "ObjectEditor.h"
 struct GLFWwindow;
 class Renderer;
 
@@ -34,8 +35,14 @@ public:
     ImVec2 ObjectTabCenter() const { return objectTabCenter; }
     ImVec2 PhongCenter() const { return lightEditor.PhongCenter(); }
     ImVec2 DirectLightCenter() const { return lightEditor.EnabledCenter(); }
+    ImVec2 TextureTabCenter() const {return textureTabCenter;}
     ImVec2 LightTabCenter() const { return lightTabCenter; }
     ImVec2 FrameLightCenter() const { return lightEditor.FrameCenter(); }
+    ImVec2 ObjectScreenCenter() const {return objectScreenCenter;}
+    ImVec2 PreviewOrigin() const {return previewOrigin;}
+    bool ObjectHandlesVisible() const {return objectEditor.Visible();}
+    ObjectEditor::Mode TransformMode() const {return objectEditor.GetMode();}
+    ImVec2 ObjectAxisCenter(int axis) const {return objectEditor.AxisCenter(axis);}
     ImVec2 LightAxisCenter(int axis) const { return lightEditor.AxisCenter(axis); }
 private:
     void DrawResearch(Renderer& renderer, Settings& settings);
@@ -44,8 +51,11 @@ private:
     float stressSpacing=3.0f;
     bool stressVolume=false, stressGeometryOnly=true;
     ImVec2 stressTabCenter{}, generateCenter{};
-    ImVec2 objectTabCenter{}, lightTabCenter{};
+    ImVec2 objectTabCenter{}, lightTabCenter{}, textureTabCenter{};
     LightEditor lightEditor;
+    ObjectEditor objectEditor;
+    bool selectObjectTab=false;
+    ImVec2 previewOrigin{},previewSize{},objectScreenCenter{};
     bool lightTabOpen=false;
     void DrawObjects(Settings& settings);
     ImVec2 addCubeCenter{}, duplicateCenter{}, deleteCenter{};
@@ -58,6 +68,7 @@ private:
     bool contextReady = false, glfwReady = false, openglReady = false;
     bool orbit = false;
     std::string captureStatus;
+    std::string textureStatus;
     ImVec2 effectCenters[5]{};
     ImVec2 pauseCenter{};
     ImVec2 resetCenter{};

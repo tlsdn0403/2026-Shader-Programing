@@ -72,11 +72,11 @@ void ClusterMesh::Draw(GLuint program,const SceneObject& o,const Settings& s,con
     unsigned lod=0;
     // clip.w는 카메라 전방 깊이입니다. 화면 가장자리에서도 거리 대신 깊이를 사용합니다.
     float viewDepth=vp[3]*o.position[0]+vp[7]*o.position[1]+vp[11]*o.position[2]+vp[15];
-    float depth=std::max(0.1f,viewDepth-(o.mesh==2?6.f:1.75f)*o.scale);
+    float depth=std::max(0.1f,viewDepth-(o.mesh==2?6.f:1.75f)*o.MaxScale());
     // 물결의 변위 오차는 단순화 오차에 없으므로 원본 LOD를 유지합니다.
     if(s.clusterLOD && o.effect!=4)
         for(unsigned i=1;i<levels.size();++i)
-            if(levels[i].error*o.scale*height/(0.828427f*depth)<=s.lodPixels) lod=i;
+            if(levels[i].error*o.MaxScale()*height/(0.828427f*depth)<=s.lodPixels) lod=i;
     const auto& level=levels[lod];
     stats.fullTriangles+=levels[0].indices/3; ++stats.lodObjects[lod];
     glBindVertexArray(level.vao);
@@ -84,8 +84,8 @@ void ClusterMesh::Draw(GLuint program,const SceneObject& o,const Settings& s,con
     GLint color=glGetUniformLocation(program,"uDebugColor");
     for(unsigned i=0;i<level.clusters.size();++i) {
         const auto& c=level.clusters[i]; ++stats.clusters;
-        Vec3 center={c.center.x*o.scale+o.position[0],c.center.y*o.scale+o.position[1],c.center.z*o.scale+o.position[2]};
-        float radius=(c.radius+(o.effect==4?o.wave:0))*o.scale;
+        Vec3 center=o.ToWorld(c.center);
+        float radius=(c.radius+(o.effect==4?o.wave:0))*o.MaxScale();
         if(s.clusterCulling && !Visible(vp,center,radius)) {++stats.culled;continue;}
         if(s.researchView==3) glUniform3fv(color,1,palette[lod]);
         else glUniform3f(color,0.2f+0.8f*std::fmod(i*0.618f,1.f),0.2f+0.8f*std::fmod(i*0.317f,1.f),0.2f+0.8f*std::fmod(i*0.713f,1.f));

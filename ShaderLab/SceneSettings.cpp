@@ -25,9 +25,11 @@ bool Settings::AddObject(int mesh) {
     selected = objects.size()-1;
     return true;
 }
-bool Settings::DuplicateSelected() {
+bool Settings::DuplicateSelected(bool keepPosition) {
     if(objects.size() >= MaxObjects) return false;
     SceneObject copy = Selected();
+    // Alt 드래그는 원본 위치에서 시작하며 새 ID만 부여합니다.
+    if(keepPosition) {copy.id=nextId++;objects.push_back(copy);selected=objects.size()-1;return true;}
     if(!AddObject(copy.mesh)) return false;
     const SceneObject placement = Selected();
     copy.id = placement.id;
@@ -51,7 +53,7 @@ void FrameCamera(Settings& s) {
     float radius=1;
     for(const auto& o:s.objects) {
         float x=o.position[0]-center.x, y=o.position[1]-center.y, z=o.position[2]-center.z;
-        radius=std::max(radius,std::sqrt(x*x+y*y+z*z)+(o.mesh==2?4.0f:1.0f)*o.scale);
+        radius=std::max(radius,std::sqrt(x*x+y*y+z*z)+(o.mesh==2?6.0f:1.75f)*o.MaxScale());
     }
     s.camera.Frame(center,radius);
 }
@@ -110,3 +112,25 @@ void GenerateStressScene(Settings& s,int count,int mesh,int columns,float spacin
     s.selected=0;s.nextId=count+1;s.floor=false;
     FrameCamera(s);
 }
+
+// 렌더링, 컬링, 복셀 GI에서 동일한 변환을 사용합니다.
+std::array<float,9> SceneObject::RotationMatrix() const {
+    float x=rotation[0]*0.01745329252f,y=rotation[1]*0.01745329252f,z=rotation[2]*0.01745329252f;
+    float a=std::cos(x),b=std::sin(x),c=std::cos(y),d=std::sin(y),e=std::cos(z),f=std::sin(z);
+    return {e*c,f*c,-d, e*d*b-f*a,f*d*b+e*a,c*b, e*d*a+f*b,f*d*a-e*b,c*a};
+}
+Vec3 SceneObject::ToWorld(Vec3 p) const {
+    auto r=RotationMatrix();p={p.x*scale*axisScale[0],p.y*scale*axisScale[1],p.z*scale*axisScale[2]};
+    return {r[0]*p.x+r[3]*p.y+r[6]*p.z+position[0],r[1]*p.x+r[4]*p.y+r[7]*p.z+position[1],r[2]*p.x+r[5]*p.y+r[8]*p.z+position[2]};
+}
+Vec3 SceneObject::ToLocal(Vec3 p) const {
+    auto r=RotationMatrix();p={p.x-position[0],p.y-position[1],p.z-position[2]};
+    return {(r[0]*p.x+r[1]*p.y+r[2]*p.z)/(scale*axisScale[0]),(r[3]*p.x+r[4]*p.y+r[5]*p.z)/(scale*axisScale[1]),(r[6]*p.x+r[7]*p.y+r[8]*p.z)/(scale*axisScale[2])};
+}
+Vec3 SceneObject::WorldNormal(Vec3 n) const {
+    auto r=RotationMatrix();n={n.x/axisScale[0],n.y/axisScale[1],n.z/axisScale[2]};
+    Vec3 v={r[0]*n.x+r[3]*n.y+r[6]*n.z,r[1]*n.x+r[4]*n.y+r[7]*n.z,r[2]*n.x+r[5]*n.y+r[8]*n.z};
+    float length=std::sqrt(std::max(1e-12f,v.x*v.x+v.y*v.y+v.z*v.z));return {v.x/length,v.y/length,v.z/length};
+}
+float SceneObject::MaxScale() const {return scale*std::max({axisScale[0],axisScale[1],axisScale[2]});}
+float SceneObject::MinScale() const {return scale*std::min({axisScale[0],axisScale[1],axisScale[2]});}

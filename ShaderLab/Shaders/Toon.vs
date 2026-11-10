@@ -6,17 +6,21 @@ layout(location=0) in vec3 aPosition;
 layout(location=1) in vec3 aNormal;
 uniform mat4 uViewProjection;
 uniform vec3 uPosition;
-uniform float uScale;
+// 비균일 스케일의 법선은 역전치 행렬로 변환합니다.
+uniform mat3 uLinear, uNormalMatrix;
 // 다음 프래그먼트 단계로 전달되며 삼각형 내부에서 보간됩니다.
 out vec3 vPosition;
 out vec3 vNormal;
+out vec3 vTexturePosition;
+out vec3 vTextureNormal;
 void main() {
+    vTexturePosition=aPosition; vTextureNormal=aNormal;
     vec3 p = aPosition;
     vec3 n = aNormal;
-    // 객체별 균일 크기와 위치를 적용한 월드 좌표입니다.
-    vec3 worldPosition = p * uScale + uPosition;
+    // 객체별 회전·축별 크기와 위치를 적용한 월드 좌표입니다.
+    vec3 worldPosition = uLinear * p + uPosition;
     vPosition = worldPosition;
-    vNormal = n;
+    vNormal = normalize(uNormalMatrix * n);
     // 월드 좌표에 카메라의 뷰·투영 행렬을 적용합니다.
     gl_Position = uViewProjection * vec4(worldPosition, 1.0);
 }

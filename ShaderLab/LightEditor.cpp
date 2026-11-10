@@ -32,7 +32,7 @@ void LightEditor::DrawPanel(Settings& s) {
     if(ImGui::Button("Frame light + selected",{-1,30})) {
         const auto& o=s.Selected();
         Vec3 p={light.position[0],light.position[1],light.position[2]},q={o.position[0],o.position[1],o.position[2]};
-        s.camera.Frame(Mul(Add(p,q),0.5f),Length(Add(p,Mul(q,-1)))*0.5f+std::max(1.f,o.scale*(o.mesh==2?6.f:1.75f)));
+        s.camera.Frame(Mul(Add(p,q),0.5f),Length(Add(p,Mul(q,-1)))*0.5f+std::max(1.f,o.MaxScale()*(o.mesh==2?6.f:1.75f)));
     }
     frameCenter=Center();
     ImGui::SetNextItemWidth(-1);

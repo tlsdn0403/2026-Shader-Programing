@@ -46,8 +46,11 @@
     <ClCompile Include="..\ShaderLab\Light.cpp"></ClCompile>
     <ClInclude Include="..\ShaderLab\Light.h"></ClInclude>
     <ClCompile Include="..\ShaderLab\LightEditor.cpp"></ClCompile>
+    <ClCompile Include="..\ShaderLab\ObjectEditor.cpp"></ClCompile>
     <ClInclude Include="..\ShaderLab\LightEditor.h"></ClInclude>
+    <ClInclude Include="..\ShaderLab\ObjectEditor.h"></ClInclude>
     <None Include="..\ShaderLab\Shaders\Light.glsl" />
+    <ClCompile Include="..\ShaderLab\TextureLibrary.cpp" />
     <ClCompile Include="..\ShaderLab\main.cpp" />
     <ClCompile Include="..\ShaderLab\Application.cpp" />
     <ClInclude Include="..\ShaderLab\Application.h" />
@@ -79,6 +82,8 @@
     <None Include="..\ShaderLab\Shaders\Dissolve.fs" />
     <None Include="..\ShaderLab\Shaders\Wave.vs" />
     <None Include="..\ShaderLab\Shaders\Wave.fs" />
+    <ClInclude Include="..\ShaderLab\TextureLibrary.h" />
+    <None Include="..\ShaderLab\Shaders\Texture.glsl" />
     <None Include="..\CMakeLists.txt" />
     <None Include="..\README.md" />
   </ItemGroup>

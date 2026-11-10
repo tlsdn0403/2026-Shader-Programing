@@ -1,21 +1,25 @@
 #version 330 core
 #include "Light.glsl"
 #include "Research.glsl"
+#include "Texture.glsl"
 // 툰 셰이딩: 부드러운 명암을 단계로 끊어 표현합니다.
 // Toon fragment shader. uFloor keeps the reference grid unaffected by the effect.
 in vec3 vPosition;
 in vec3 vNormal;
-out vec4 fragColor;
+layout(location=0) out vec4 fragColor;
+layout(location=1) out uint objectId;
+uniform uint uObjectId;
 uniform vec3 uBaseColor;
 uniform vec3 uCamera;
 
 uniform float uAmbient, uRoughness;
 uniform bool uFloor;
 void main() {
+    objectId=uObjectId; // 깊이 테스트와 discard가 적용된 실제 표면 선택용 ID
     // N: 표면 법선, V: 표면에서 카메라 방향, L: 표면에서 광원 방향.
     vec3 N=normalize(vNormal), V=normalize(uCamera-vPosition), L=lightVector(vPosition);
     if (!gl_FrontFacing) N=-N;
-    vec3 baseColor=uBaseColor;
+    vec3 baseColor=surfaceBaseColor(uBaseColor);
     // 기준 바닥은 좌표 기반 격자로 표시합니다. fwidth로 화면상 선 두께를 보정합니다.
     if(uFloor) {
         vec2 grid=abs(fract(vPosition.xz)-0.5)/max(fwidth(vPosition.xz),vec2(0.001));
@@ -39,7 +43,7 @@ void main() {
     // 강한 밝기를 0~1 범위로 압축(톤 매핑)한 뒤 감마 2.2로 화면 표시용 색을 만듭니다.
     vec3 indirect=baseColor*indirectLight(vPosition,N);
     color+=indirect;
-    if(!uFloor) color+=uBaseColor*uEmission;
+    if(!uFloor) color+=baseColor*uEmission;
     if(uResearchView==1) color=indirect;
     if((uResearchView==2 || uResearchView==3) && !uFloor) color=uDebugColor;
     color=color/(color+vec3(1.0));

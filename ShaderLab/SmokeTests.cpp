@@ -9,10 +9,37 @@
 #include <stdexcept>
 #include <tuple>
 #include <cmath>
+#include <filesystem>
+#include <fstream>
+#include <chrono>
 
 // 기능을 끈 기준 화면과 비교하고, 캐시 무효화와 실제 제출 삼각형 수를 검증합니다.
 int RunResearchTest(Renderer& renderer) {
     auto require=[](bool ok,const char* message) { if(!ok) throw std::runtime_error(message); };
+    // 실제 표시 표면의 ID: 겹침, 빈 배경, discard 및 변환 후에도 선택이 맞아야 합니다.
+    Settings pick;pick.floor=false;pick.Selected().mesh=1;
+    renderer.Render(320,240,pick,0);
+    require(renderer.Pick(.5f,.5f)==1 && renderer.Pick(.01f,.01f)==0,"Object picking failed");
+    auto base=renderer.Fingerprint();
+    pick.Selected().rotation[1]=37;pick.Selected().axisScale[0]=1.8f;pick.Selected().axisScale[1]=0.6f;
+    Vec3 local={.2f,.3f,.4f},roundTrip=pick.Selected().ToLocal(pick.Selected().ToWorld(local));
+    require(std::abs(roundTrip.x-local.x)+std::abs(roundTrip.y-local.y)+std::abs(roundTrip.z-local.z)<1e-5f,"Transform inverse failed");
+    renderer.Render(320,240,pick,0);require(renderer.Fingerprint()!=base,"Transform did not change rendering");
+    pick.clusterCulling=true;renderer.Render(320,240,pick,0);
+    require(renderer.Pick(.5f,.5f)==1,"Transformed cluster picking failed");
+    pick.DuplicateSelected(true);auto eye=pick.camera.Position();
+    pick.Selected().position[0]=eye.x*.35f;pick.Selected().position[1]=eye.y*.35f;pick.Selected().position[2]=eye.z*.35f;
+    renderer.Render(320,240,pick,0);require(renderer.Pick(.5f,.5f)==static_cast<unsigned>(pick.Selected().id),"Picking did not select foreground object");
+    pick.Selected().effect=3;pick.Selected().dissolve=1;
+    renderer.Render(320,240,pick,0);require(renderer.Pick(.5f,.5f)==1,"Discard did not reveal object behind it");
+    pick.objects.resize(1);pick.selected=0;pick.voxelGI=true;
+    renderer.Render(160,120,pick,0);auto transformUpdates=renderer.GI().Updates();
+    pick.Selected().rotation[2]=25;renderer.Render(160,120,pick,0);
+    require(renderer.GI().Updates()==transformUpdates+1,"Rotation did not update GI");
+    pick.Selected().axisScale[2]=2;renderer.Render(160,120,pick,0);
+    require(renderer.GI().Updates()==transformUpdates+2,"Scale did not update GI");
+    require(glGetError()==GL_NO_ERROR,"Transform/picking GL error");
+    std::cout<<"PASS: GPU selection, occlusion, discard, transforms, culling and GI cache.\n";
     // 광원 모델별 GPU 출력, 위치/색/방향/범위, GI 갱신을 실제 컨텍스트에서 검사합니다.
     Settings lightTest;lightTest.floor=false;lightTest.ambient=0;
     lightTest.light.innerAngle=3;lightTest.light.outerAngle=15; // 구 표면에 cone 경계가 걸리는 비교 장면
@@ -190,6 +217,32 @@ int RunRendererSmokeTest(Renderer& renderer) {
 // 프레임 번호별로 클릭을 누르고 떼는 이벤트와 창 크기 변경을 예약합니다.
 void UiSmokeTest::Inject(GLFWwindow* window, const EditorUI& editor) {
     auto& io = ImGui::GetIO();
+    if(testFrame==117) {auto p=editor.ObjectScreenCenter();io.AddMousePosEvent(p.x,p.y);}
+    if(testFrame==118 || testFrame==119) io.AddMouseButtonEvent(0,testFrame==118);
+    // 객체 XYZ 이동, Alt 복제, 클릭만 할 때 미복제, Esc 취소를 실제 입력으로 검증합니다.
+    for(int run=0;run<6;++run) {
+        int start=120+run*8;
+        if(testFrame==start) {axisMouse=editor.ObjectAxisCenter(run<3?run:0);io.AddMousePosEvent(axisMouse.x,axisMouse.y);io.AddKeyEvent(ImGuiMod_Alt,run>=3);}
+        if(testFrame==start+1) io.AddMouseButtonEvent(0,true);
+        if(testFrame==start+2 && run!=4) io.AddMousePosEvent(axisMouse.x+35,axisMouse.y-25);
+        if(testFrame==start+3 && run!=4) io.AddMousePosEvent(axisMouse.x+55,axisMouse.y-35);
+        if(testFrame==start+4 && run==5) io.AddKeyEvent(ImGuiKey_Escape,true);
+        if(testFrame==start+5) {io.AddMouseButtonEvent(0,false);io.AddKeyEvent(ImGuiMod_Alt,false);io.AddKeyEvent(ImGuiKey_Escape,false);}
+    }
+    if(testFrame==170 || testFrame==171) io.AddKeyEvent(ImGuiKey_E,testFrame==170);
+    if(testFrame==173 || testFrame==185) {axisMouse=editor.ObjectAxisCenter(0);io.AddMousePosEvent(axisMouse.x,axisMouse.y);}
+    if(testFrame==174 || testFrame==186) io.AddMouseButtonEvent(0,true);
+    if(testFrame==175 || testFrame==187) io.AddMousePosEvent(axisMouse.x+40,axisMouse.y-30);
+    if(testFrame==176 || testFrame==188) io.AddMouseButtonEvent(0,false);
+    if(testFrame==182 || testFrame==183) io.AddKeyEvent(ImGuiKey_R,testFrame==182);
+    if(testFrame==194 || testFrame==195) io.AddKeyEvent(ImGuiKey_W,testFrame==194);
+    if(testFrame==198) {auto p=editor.PreviewOrigin();io.AddMousePosEvent(p.x+5,p.y+5);}
+    if(testFrame==199 || testFrame==200) io.AddMouseButtonEvent(0,testFrame==199);
+    if(testFrame==201 && editor.ObjectHandlesVisible()) throw std::runtime_error("Empty click did not hide handles");
+    if(testFrame==202) {auto p=editor.ObjectScreenCenter();io.AddMousePosEvent(p.x,p.y);}
+    if(testFrame==203 || testFrame==204) io.AddMouseButtonEvent(0,testFrame==203);
+    if(testFrame==205 && (!editor.ObjectHandlesVisible() || editor.TransformMode()!=ObjectEditor::Move)) throw std::runtime_error("Click selection or W mode failed");
+    if(testFrame==110 || testFrame==111 || testFrame==112) {auto p=editor.TextureTabCenter();io.AddMousePosEvent(p.x,p.y);if(testFrame!=110)io.AddMouseButtonEvent(0,testFrame==111);}
     if(testFrame==54) {auto pos=editor.LightTabCenter();io.AddMousePosEvent(pos.x,pos.y);}
     if(testFrame==55 || testFrame==56 || testFrame==60 || testFrame==61) {
         auto pos=testFrame<57?editor.LightTabCenter():editor.PhongCenter();
@@ -315,8 +368,86 @@ void UiSmokeTest::Verify(GLFWwindow* window, const Settings& s, int fw, int fh) 
             throw std::runtime_error("Escape did not cancel light movement");
         if(!s.light.enabled) throw std::runtime_error("Light did not turn back on");
         if(!SaveFramebufferPng("light-editor-ui.png",fw,fh) || glGetError()!=GL_NO_ERROR) throw std::runtime_error("Light UI capture failed");
-        glfwSetWindowShouldClose(window,GLFW_TRUE);
+
         std::cout<<"PASS: Phong model, Light tab, direct light toggle, XYZ gizmo drags without camera movement.\n";
     }
+    if(testFrame==116) {
+        if(!SaveFramebufferPng("texture-editor-ui.png",fw,fh)) throw std::runtime_error("Texture UI capture failed");
+    }
+    for(int run=0;run<6;++run) {
+        int start=120+run*8;
+        if(testFrame==start) {
+            objectBefore={s.Selected().position[0],s.Selected().position[1],s.Selected().position[2]};
+            objectCount=s.objects.size();originalIndex=s.selected;beforeCamera=s.camera.Position();
+        }
+        if(testFrame==start+6) {
+            if(s.objects.size()!=objectCount+(run==3?1:0)) throw std::runtime_error("Object Alt drag duplicate count failed");
+            const float before[]={objectBefore.x,objectBefore.y,objectBefore.z};
+            for(int axis=0;axis<3;++axis) {
+                float change=std::abs(s.Selected().position[axis]-before[axis]);
+                bool moved=run<4 && axis==(run<3?run:0);
+                if(moved?change<0.001f:change>0.00001f) throw std::runtime_error("Object drag axis or rollback failed");
+                if(run==3 && s.objects[originalIndex].position[axis]!=before[axis]) throw std::runtime_error("Alt drag moved original");
+            }
+            auto eye=s.camera.Position();
+            if(eye.x!=beforeCamera.x || eye.y!=beforeCamera.y || eye.z!=beforeCamera.z) throw std::runtime_error("Object drag orbited camera");
+        }
+    }
+    if(testFrame==168) {
+        if(!SaveFramebufferPng("object-gizmo-ui.png",fw,fh)) throw std::runtime_error("Object gizmo capture failed");
+        std::cout<<"PASS: object XYZ movement, Alt duplicate once, click without duplication, Escape rollback, fixed camera.\n";
+    }
+    if(testFrame==178) {
+        if(std::abs(s.Selected().rotation[0])<0.001f) throw std::runtime_error("E rotation failed");
+        if(!SaveFramebufferPng("rotate-gizmo-ui.png",fw,fh)) throw std::runtime_error("Rotation capture failed");
+    }
+    if(testFrame==190) {
+        if(std::abs(s.Selected().axisScale[0]-1)<0.001f) throw std::runtime_error("R scale failed");
+        if(!SaveFramebufferPng("scale-gizmo-ui.png",fw,fh)) throw std::runtime_error("Scale capture failed");
+        std::cout<<"PASS: E rotation and R local scale.\n";
+    }
+    if(testFrame==210) glfwSetWindowShouldClose(window,GLFW_TRUE);
     ++testFrame;
+}
+
+// 디코딩 실패 복구, 유니코드 경로, 객체별 설정과 모든 효과/LOD 경로를 실제 GPU에서 확인합니다.
+int RunTextureTest(Renderer& renderer) {
+    auto require=[](bool ok,const char* message){if(!ok) throw std::runtime_error(message);};
+    auto path=std::filesystem::temp_directory_path()/std::filesystem::u8path(u8"ShaderLab-텍스처-"+std::to_string(std::chrono::steady_clock::now().time_since_epoch().count())+".bmp");
+    auto png=path;png.replace_extension(".png");
+    struct Cleanup { std::filesystem::path a,b; ~Cleanup(){std::error_code e;std::filesystem::remove(a,e);std::filesystem::remove(b,e);} } cleanup{path,png};
+    // 2x2 bottom-up 24-bit BMP. 각 모서리가 달라 반복과 투영 변화를 검출할 수 있습니다.
+    unsigned char bmp[70]{};bmp[0]='B';bmp[1]='M';bmp[2]=70;bmp[10]=54;bmp[14]=40;bmp[18]=2;bmp[22]=2;bmp[26]=1;bmp[28]=24;bmp[34]=16;
+    unsigned char pixels[]={0,0,255,0,255,0,0,0,255,0,0,255,255,255,0,0};
+    std::copy(std::begin(pixels),std::end(pixels),bmp+54);
+    {std::ofstream file(path,std::ios::binary);file.write(reinterpret_cast<const char*>(bmp),sizeof(bmp));}
+    Settings s;s.floor=false;std::string error;
+    require(renderer.ApplyTexture(s.Selected(),path.u8string(),error),error.c_str());
+    auto texture=renderer.TextureInfo(s.Selected().texturePath);
+    require(texture && texture->width==2 && texture->height==2,"Decoded texture size incorrect");
+    auto saved=s.Selected().texturePath;
+    require(!renderer.ApplyTexture(s.Selected(),path.u8string()+".missing",error),"Missing texture accepted");
+    require(s.Selected().texturePath==saved,"Failed load replaced the previous texture");
+    for(int effect=0;effect<6;++effect) for(int mesh=0;mesh<3;++mesh) for(int optimized=0;optimized<2;++optimized) {
+        s.Selected().effect=effect;s.Selected().mesh=mesh;s.clusterLOD=s.clusterCulling=optimized!=0;
+        s.Selected().textureEnabled=false;renderer.Render(400,300,s,.5f);auto off=renderer.Fingerprint();
+        s.Selected().textureEnabled=true;renderer.Render(400,300,s,.5f);
+        require(renderer.Fingerprint()!=off,"Texture not visible in material/mesh/LOD combination");
+        require(glGetError()==GL_NO_ERROR,"Texture render GL error");
+    }
+    s.Selected().effect=0;s.Selected().mesh=0;s.clusterLOD=s.clusterCulling=false;
+    renderer.Render(640,480,s,0);auto before=renderer.Fingerprint();
+    s.Selected().textureTint=true;renderer.Render(640,480,s,0);require(renderer.Fingerprint()!=before,"Tint did not affect texture");
+    s.Selected().textureTint=false;s.Selected().textureRepeat[0]=3;renderer.Render(640,480,s,0);
+    require(renderer.Fingerprint()!=before,"Texture repeat had no effect");
+    require(s.DuplicateSelected() && s.Selected().texturePath==saved,"Duplicate lost texture");
+    s.Selected().texturePath.clear();require(s.objects[0].texturePath==saved,"Texture removal affected another object");
+    renderer.Render(640,480,s,0);require(renderer.TextureInfo(saved)!=nullptr,"Shared texture collected too early");
+    require(renderer.Capture("texture-preview.png"),"Texture preview capture failed");
+    // PNG 디코딩 경로도 검증합니다. PNG 저장 함수의 경로는 ASCII를 사용합니다.
+    require(renderer.ApplyTexture(s.Selected(),std::filesystem::absolute("texture-preview.png").u8string(),error),error.c_str());
+    s.objects[0].texturePath.clear();s.Selected().texturePath.clear();renderer.Render(320,240,s,0);
+    require(renderer.TextureInfo(saved)==nullptr,"Unused texture was not released");
+    std::cout<<"PASS: texture BMP/PNG, Unicode path, failed load preservation, 36 material/mesh/LOD combinations, tint, repeat, duplication and cleanup.\n";
+    return 0;
 }

@@ -66,9 +66,12 @@ void EditorUI::Draw(Renderer& renderer, Settings& s, float& elapsed,
                     const std::filesystem::path& outputDirectory) {
     ImGui::NewFrame();
     auto& io = ImGui::GetIO();
-    if(!io.WantTextInput) {
+    if(!io.WantTextInput && !ImGui::IsAnyItemActive()) {
+        if(ImGui::IsKeyPressed(ImGuiKey_W)) objectEditor.SetMode(ObjectEditor::Move);
+        if(ImGui::IsKeyPressed(ImGuiKey_E)) objectEditor.SetMode(ObjectEditor::Rotate);
+        if(ImGui::IsKeyPressed(ImGuiKey_R)) objectEditor.SetMode(ObjectEditor::Scale);
         if(ImGui::IsKeyPressed(ImGuiKey_Space)) s.animate=!s.animate;
-        if(ImGui::IsKeyPressed(ImGuiKey_R)) renderer.Reload();
+        if(ImGui::IsKeyPressed(ImGuiKey_F5)) renderer.Reload();
         if(ImGui::IsKeyPressed(ImGuiKey_Home)) FrameCamera(s);
     }
     float W=io.DisplaySize.x,H=io.DisplaySize.y,left=245,right=340,top=70,bottom=38;
@@ -121,7 +124,7 @@ void EditorUI::DrawLibrary(Settings& s) {
     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); Label("ABOUT THIS STUDY");
     ImGui::TextWrapped("%s",descriptions[s.Selected().effect==5?0:s.Selected().effect]);
     ImGui::Spacing(); ImGui::Separator(); ImGui::Spacing(); Label("CONTROLS");
-    ImGui::TextWrapped("Drag preview  /  Orbit\nMouse wheel  /  Zoom\nHome  /  Frame scene\nSpace  /  Play or pause\nR  /  Reload shaders");
+    ImGui::TextWrapped("Click object  /  Select\nW / E / R  /  Move / Rotate / Scale\nAlt + drag XYZ  /  Duplicate\nEsc  /  Cancel move\nDrag empty space  /  Orbit\nMouse wheel  /  Zoom\nHome  /  Frame scene\nSpace  /  Play or pause\nF5  /  Reload shaders");
     ImGui::Spacing(); ImGui::TextDisabled("OpenGL 3.3 / GLSL");
 }
 
@@ -133,8 +136,8 @@ void EditorUI::DrawInspector(Renderer& renderer, Settings& s, const std::filesys
     bool stressOpen=ImGui::BeginTabItem("Stress");
     stressTabCenter={ImGui::GetItemRectMin().x+20,ImGui::GetItemRectMin().y+12};
     if(stressOpen) { DrawStress(renderer,s); ImGui::EndTabItem(); }
-    bool objectOpen=ImGui::BeginTabItem("Object");
-    objectTabCenter={ImGui::GetItemRectMin().x+20,ImGui::GetItemRectMin().y+12};
+    bool objectOpen=ImGui::BeginTabItem("Object",nullptr,selectObjectTab?ImGuiTabItemFlags_SetSelected:0);
+    selectObjectTab=false;objectTabCenter={ImGui::GetItemRectMin().x+20,ImGui::GetItemRectMin().y+12};
     if(objectOpen) {
     Label("INSPECTOR"); ImGui::TextDisabled("Live material parameters"); ImGui::Spacing();
     ImGui::SetNextItemWidth(-1);
@@ -143,6 +146,10 @@ void EditorUI::DrawInspector(Renderer& renderer, Settings& s, const std::filesys
     ImGui::TextDisabled("Position X / Y / Z");
     ImGui::SetNextItemWidth(-1);
     ImGui::DragFloat3("##Position",s.Selected().position,0.05f,-30,30,"%.2f");
+    ImGui::TextDisabled("Rotation X / Y / Z (degrees)");
+    ImGui::SetNextItemWidth(-1);ImGui::DragFloat3("##Rotation",s.Selected().rotation,0.5f,0,0,"%.1f");
+    ImGui::TextDisabled("Local scale X / Y / Z");
+    ImGui::SetNextItemWidth(-1);ImGui::DragFloat3("##AxisScale",s.Selected().axisScale,0.01f,0.01f,100.f,"%.2f",ImGuiSliderFlags_AlwaysClamp);
     ImGui::SetNextItemWidth(-1);
     ImGui::SliderFloat("##Scale",&s.Selected().scale,0.1f,3.0f,"Scale %.2f");
     if(ImGui::Button("Frame scene",{-1,30})) FrameCamera(s);
@@ -162,6 +169,32 @@ void EditorUI::DrawInspector(Renderer& renderer, Settings& s, const std::filesys
     ImGui::Text("%s.fs",Renderer::ShaderName(s.Selected().effect));
     ImGui::TextWrapped("%s",renderer.Status().c_str());
     ImGui::EndTabItem();
+    }
+    bool textureOpen=ImGui::BeginTabItem("Texture");
+    textureTabCenter={ImGui::GetItemRectMin().x+20,ImGui::GetItemRectMin().y+12};
+    if(textureOpen) {
+        auto& object=s.Selected();
+        Label("BASE COLOR TEXTURE");
+        ImGui::Text("Selected: Object %d",object.id);
+        if(ImGui::Button("Choose image...",{-1,34})) {
+            auto path=ChooseTextureFile();
+            if(!path.empty()) renderer.ApplyTexture(object,path,textureStatus);
+        }
+        ImGui::TextDisabled("PNG / JPEG / BMP");
+        if(!textureStatus.empty()) ImGui::TextWrapped("%s",textureStatus.c_str());
+        if(const auto* image=renderer.TextureInfo(object.texturePath)) {
+            ImGui::TextWrapped("%s",std::filesystem::u8path(object.texturePath).filename().u8string().c_str());
+            ImGui::Text("%u x %u",image->width,image->height);
+            float preview=std::min(ImGui::GetContentRegionAvail().x,180.f*image->width/image->height);
+            ImGui::Image((ImTextureID)image->id,{preview,preview*image->height/image->width});
+            ImGui::Checkbox("Enable texture",&object.textureEnabled);
+            ImGui::Checkbox("Tint with Base color",&object.textureTint);
+            ImGui::SetNextItemWidth(-1);
+            ImGui::SliderFloat2("##TextureRepeat",object.textureRepeat,0.25f,8.f,"Repeat %.2f");
+            if(ImGui::Button("Remove texture",{-1,30})) {object.texturePath.clear();textureStatus.clear();}
+        } else ImGui::TextWrapped("Choose an image to apply it to the selected object.");
+        ImGui::TextWrapped("Color texture only. Image alpha is ignored. GI bounce uses the object's Base color.");
+        ImGui::EndTabItem();
     }
     bool lightOpen=ImGui::BeginTabItem("Light");
     lightTabCenter={ImGui::GetItemRectMin().x+20,ImGui::GetItemRectMin().y+12};
@@ -206,17 +239,36 @@ void EditorUI::DrawResearch(Renderer& renderer, Settings& s) {
 void EditorUI::DrawPreview(Renderer& renderer, Settings& s, float elapsed) {
     auto& io = ImGui::GetIO();
     ImGui::Text("%zu objects | Object %d",s.objects.size(),s.Selected().id); ImGui::SameLine(); ImGui::TextDisabled(" /  Perspective");
+    if(ImGui::SmallButton("Move [W]")) objectEditor.SetMode(ObjectEditor::Move);
+    ImGui::SameLine();if(ImGui::SmallButton("Rotate [E]")) objectEditor.SetMode(ObjectEditor::Rotate);
+    ImGui::SameLine();if(ImGui::SmallButton("Scale [R]")) objectEditor.SetMode(ObjectEditor::Scale);
+    ImGui::SameLine();ImGui::TextDisabled("Click an object to select");
     ImVec2 available=ImGui::GetContentRegionAvail();
     renderer.Render(static_cast<int>(available.x*io.DisplayFramebufferScale.x),static_cast<int>(available.y*io.DisplayFramebufferScale.y),s,elapsed);
     ImGui::Image(static_cast<ImTextureID>(renderer.Texture()),available,{0,1},{1,0});
     bool hovered=ImGui::IsItemHovered();
-    bool handle=lightTabOpen && lightEditor.DrawGizmo(s,ImGui::GetItemRectMin(),available,hovered);
+    previewOrigin=ImGui::GetItemRectMin();previewSize=available;
+    auto vp=s.camera.ViewProjection(available.x/available.y);auto& selected=s.Selected();
+    float w=vp[3]*selected.position[0]+vp[7]*selected.position[1]+vp[11]*selected.position[2]+vp[15];
+    objectScreenCenter={previewOrigin.x+(1+(vp[0]*selected.position[0]+vp[4]*selected.position[1]+vp[8]*selected.position[2]+vp[12])/w)*available.x/2,
+                        previewOrigin.y+(1-(vp[1]*selected.position[0]+vp[5]*selected.position[1]+vp[9]*selected.position[2]+vp[13])/w)*available.y/2};
+    bool handle=false;
+    if(lightTabOpen) {objectEditor.Cancel();handle=lightEditor.DrawGizmo(s,ImGui::GetItemRectMin(),available,hovered);}
+    else {lightEditor.Cancel();handle=objectEditor.DrawGizmo(s,ImGui::GetItemRectMin(),available,hovered);}
     if(hovered && !handle) s.camera.Zoom(io.MouseWheel);
     if(ImGui::IsItemHovered()&&ImGui::IsMouseClicked(ImGuiMouseButton_Left)) ImGui::SetWindowFocus();
     
-    if(hovered && !handle && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) orbit=true;
+    if(hovered && !handle && ImGui::IsMouseClicked(ImGuiMouseButton_Left)) {
+        unsigned id=renderer.Pick((io.MousePos.x-previewOrigin.x)/available.x,(io.MousePos.y-previewOrigin.y)/available.y);
+        bool found=false;
+        for(std::size_t i=0;i<s.objects.size();++i) if(static_cast<unsigned>(s.objects[i].id)==id) {
+            s.selected=i;objectEditor.Show(true);lightTabOpen=false;selectObjectTab=true;found=true;break;
+        }
+        if(!found) objectEditor.Show(false);
+        orbit=!found;
+    }
     if(handle || !ImGui::IsMouseDown(ImGuiMouseButton_Left)) orbit=false;
-    if(orbit) {s.camera.Orbit(io.MouseDelta.x,io.MouseDelta.y);}
+    if(orbit && ImGui::IsMouseDragging(0)) {s.camera.Orbit(io.MouseDelta.x,io.MouseDelta.y);}
 }
 
 // 객체를 추가·선택·복제·삭제합니다. 벡터 변경 전에 참조를 보관하지 않아 무효 참조를 피합니다.
@@ -255,7 +307,7 @@ void EditorUI::DrawObjects(Settings& s) {
         ImGui::PushID(object.id);
         char label[80];
         snprintf(label,sizeof(label),"%s %d / %s",meshNames[object.mesh],object.id,Renderer::ShaderName(object.effect));
-        if(ImGui::Selectable(label,s.selected==i)) s.selected=i;
+        if(ImGui::Selectable(label,s.selected==i)) {s.selected=i;objectEditor.Show(true);}
         ImGui::PopID();
     }
     ImGui::EndChild();

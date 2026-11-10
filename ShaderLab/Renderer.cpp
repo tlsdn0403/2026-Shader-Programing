@@ -57,7 +57,7 @@ bool Renderer::Initialize(const std::string& shaderDirectory) {
     }
     plane=Upload(data);
     glGenQueries(2,timerQueries);
-    glGenFramebuffers(1,&framebuffer); glGenTextures(1,&colorTexture); glGenRenderbuffers(1,&depthBuffer);
+    glGenFramebuffers(1,&framebuffer); glGenTextures(1,&colorTexture); glGenTextures(1,&idTexture); glGenRenderbuffers(1,&depthBuffer);
     return true;
 }
 // 미리보기 크기가 바뀔 때만 컬러 텍스처와 깊이 버퍼의 저장 공간을 다시 할당합니다.
@@ -75,6 +75,12 @@ void Renderer::Resize(int w,int h) {
     glBindFramebuffer(GL_FRAMEBUFFER,framebuffer);
     glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,colorTexture,0);
     glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_RENDERBUFFER,depthBuffer);
+    glBindTexture(GL_TEXTURE_2D,idTexture);
+    glTexImage2D(GL_TEXTURE_2D,0,GL_R32UI,w,h,0,GL_RED_INTEGER,GL_UNSIGNED_INT,nullptr);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+    glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+    glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT1,GL_TEXTURE_2D,idTexture,0);
+    const GLenum attachments[]={GL_COLOR_ATTACHMENT0,GL_COLOR_ATTACHMENT1};glDrawBuffers(2,attachments);
     if(glCheckFramebufferStatus(GL_FRAMEBUFFER)!=GL_FRAMEBUFFER_COMPLETE) throw std::runtime_error("Preview framebuffer is incomplete");
 }
 // VAO가 지정한 정점 배열을 삼각형 단위로 그립니다.
@@ -84,6 +90,7 @@ void Renderer::Draw(const Mesh& mesh) { glBindVertexArray(mesh.vao); glDrawArray
 // 화면에 직접 그리지 않고 FBO에 그립니다. 완성된 컬러 텍스처를 UI가 표시합니다.
 void Renderer::Render(int w,int h,const Settings& s,float time) {
     Resize(std::clamp(w,1,4096),std::clamp(h,1,4096));
+    textures.Collect(s);
     gi.Update(s);
     stats={};
     // GPU 시간은 비동기 쿼리로 읽습니다. CPU 복셀 재계산 시간은 별도 표시합니다.
@@ -95,7 +102,9 @@ void Renderer::Render(int w,int h,const Settings& s,float time) {
     if(timed) glBeginQuery(GL_TIME_ELAPSED,timerQueries[timerIndex]);
     glBindFramebuffer(GL_FRAMEBUFFER,framebuffer); glViewport(0,0,width,height);
     glEnable(GL_DEPTH_TEST); glDisable(GL_BLEND); glDisable(GL_CULL_FACE);
-    glClearColor(0.025f,0.036f,0.052f,1); glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+    glClearColor(0.025f,0.036f,0.052f,1); glClear(GL_DEPTH_BUFFER_BIT);
+    const float background[]={0.025f,0.036f,0.052f,1};const GLuint empty[]={0,0,0,0};
+    glClearBufferfv(GL_COLOR,0,background);glClearBufferuiv(GL_COLOR,1,empty);
     Vec3 eye = s.camera.Position();
     Matrix4 vp = s.camera.ViewProjection(static_cast<float>(width) / height);
     // 같은 구/큐브/평면 GPU 버퍼를 재사용하고 객체마다 셰이더와 uniform만 바꿉니다.
@@ -118,12 +127,26 @@ void Renderer::Render(int w,int h,const Settings& s,float time) {
     float outer=std::clamp(s.light.outerAngle,inner+0.1f,89.f);
     glUniform1f(loc("uSpotInnerCos"),std::cos(inner*pi/180));
     glUniform1f(loc("uSpotOuterCos"),std::cos(outer*pi/180));
+    const auto* image=referenceFloor?nullptr:textures.Find(object.texturePath);
+    glActiveTexture(GL_TEXTURE0); glBindTexture(GL_TEXTURE_2D,image?image->id:0);
+    glUniform1i(loc("uBaseTexture"),0);
+    glUniform1i(loc("uUseTexture"),image && object.textureEnabled);
+    glUniform1i(loc("uTextureTint"),object.textureTint);
+    glUniform1i(loc("uTextureMesh"),object.mesh);
+    glUniform2fv(loc("uTextureRepeat"),1,object.textureRepeat);
     glUniform3fv(loc("uBaseColor"),1,object.color);
     glUniform1f(loc("uTime"),time); glUniform1f(loc("uWave"),object.wave);
     glUniform1f(loc("uRoughness"),object.roughness); glUniform1f(loc("uRim"),object.rim);
     glUniform1f(loc("uDissolve"),object.dissolve); glUniform1f(loc("uPower"),s.light.enabled?s.light.intensity:0.f); glUniform1f(loc("uAmbient"),s.ambient);
     glUniform3fv(loc("uPosition"),1,object.position);
-    glUniform1f(loc("uScale"),object.scale);
+    auto linear=object.RotationMatrix(),normal=linear;
+    for(int c=0;c<3;++c) for(int r=0;r<3;++r) {
+        linear[c*3+r]*=object.scale*object.axisScale[c];
+        normal[c*3+r]/=object.scale*object.axisScale[c];
+    }
+    glUniformMatrix3fv(loc("uLinear"),1,GL_FALSE,linear.data());
+    glUniformMatrix3fv(loc("uNormalMatrix"),1,GL_FALSE,normal.data());
+    glUniform1ui(loc("uObjectId"),referenceFloor?0:static_cast<GLuint>(object.id));
     glUniform1i(loc("uFloor"),referenceFloor?1:0);
 
     glPolygonMode(GL_FRONT_AND_BACK,(!referenceFloor && s.wireframe)?GL_LINE:GL_FILL);
@@ -166,10 +189,19 @@ bool Renderer::Capture(const std::string& path) const {
 // Application이 컨텍스트를 파괴하기 전에 호출합니다. 해제한 핸들은 0으로 초기화합니다.
 void Renderer::Shutdown() {
     for(Mesh* m:{&sphere,&cube,&plane}) {m->clustered.Shutdown();glDeleteBuffers(1,&m->vbo);glDeleteVertexArrays(1,&m->vao);*m={};}
+    textures.Shutdown();
     gi.Shutdown();
     glDeleteQueries(2,timerQueries);timerQueries[0]=timerQueries[1]=0;
     timerPending[0]=timerPending[1]=false;
     shaders.Shutdown();
-    glDeleteFramebuffers(1,&framebuffer); glDeleteTextures(1,&colorTexture); glDeleteRenderbuffers(1,&depthBuffer);
-    framebuffer=colorTexture=depthBuffer=0; width=height=0;
+    glDeleteFramebuffers(1,&framebuffer); glDeleteTextures(1,&colorTexture); glDeleteTextures(1,&idTexture); glDeleteRenderbuffers(1,&depthBuffer);
+    framebuffer=colorTexture=idTexture=depthBuffer=0; width=height=0;
+}
+
+unsigned Renderer::Pick(float u,float v) const {
+    if(!framebuffer || u<0 || u>=1 || v<0 || v>=1) return 0;
+    GLint previous=0;glGetIntegerv(GL_READ_FRAMEBUFFER_BINDING,&previous);
+    glBindFramebuffer(GL_READ_FRAMEBUFFER,framebuffer);glReadBuffer(GL_COLOR_ATTACHMENT1);
+    GLuint id=0;glReadPixels(std::min(width-1,int(u*width)),std::min(height-1,int((1-v)*height)),1,1,GL_RED_INTEGER,GL_UNSIGNED_INT,&id);
+    glReadBuffer(GL_COLOR_ATTACHMENT0);glBindFramebuffer(GL_READ_FRAMEBUFFER,previous);return id;
 }

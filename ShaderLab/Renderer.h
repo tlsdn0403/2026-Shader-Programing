@@ -7,15 +7,22 @@
 #include "ShaderLibrary.h"
 #include "VoxelGI.h"
 #include "ClusterMesh.h"
+#include "TextureLibrary.h"
 
 
 class Renderer {
 public:
+    bool ApplyTexture(SceneObject& object,const std::string& path,std::string& error) {
+        if(!textures.Load(path,error)) return false;
+        object.texturePath=path;object.textureEnabled=true;return true;
+    }
+    const TextureLibrary::Image* TextureInfo(const std::string& path) const {return textures.Find(path);}
     bool Initialize(const std::string& shaderDirectory);
     bool Reload() { return shaders.Reload(); }
     bool ReloadFrom(const std::string& vertex, const std::string& fragment, int effect = 0) { return shaders.ReloadFrom(vertex, fragment, effect); }
     static const char* ShaderName(int effect) { return ShaderLibrary::Name(effect); }
     void Render(int width, int height, const Settings& settings, float time);
+    unsigned Pick(float u, float v) const; // 좌상단 기준 정규화 화면 좌표
     void Shutdown();
     GLuint Texture() const { return colorTexture; }
     const std::string& Status() const { return shaders.Status(); }
@@ -26,6 +33,7 @@ public:
     const VoxelGI& GI() const { return gi; }
     double GpuMs() const { return gpuMs; }
 private:
+    TextureLibrary textures;
     VoxelGI gi;
     GeometryStats stats;
     GLuint timerQueries[2]{};
@@ -38,6 +46,6 @@ private:
     void Resize(int width, int height);
     void Draw(const Mesh& mesh);
     ShaderLibrary shaders;
-    GLuint framebuffer = 0, colorTexture = 0, depthBuffer = 0;
+    GLuint framebuffer = 0, colorTexture = 0, idTexture = 0, depthBuffer = 0;
     int width = 0, height = 0;
 };

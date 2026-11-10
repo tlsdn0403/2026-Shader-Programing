@@ -14,7 +14,9 @@
     <ClCompile Include="..\ShaderLab\Light.cpp"><Filter>cpp</Filter></ClCompile>
     <ClInclude Include="..\ShaderLab\Light.h"><Filter>h</Filter></ClInclude>
     <ClCompile Include="..\ShaderLab\LightEditor.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClCompile Include="..\ShaderLab\ObjectEditor.cpp"><Filter>cpp</Filter></ClCompile>
     <ClInclude Include="..\ShaderLab\LightEditor.h"><Filter>h</Filter></ClInclude>
+    <ClInclude Include="..\ShaderLab\ObjectEditor.h"><Filter>h</Filter></ClInclude>
     <None Include="..\ShaderLab\Shaders\Light.glsl" />
     <ClCompile Include="..\ShaderLab\main.cpp"><Filter>cpp</Filter></ClCompile>
     <ClCompile Include="..\ShaderLab\Application.cpp"><Filter>cpp</Filter></ClCompile>
@@ -47,5 +49,10 @@
     <None Include="..\ShaderLab\Shaders\Dissolve.fs"><Filter>fs</Filter></None>
     <None Include="..\ShaderLab\Shaders\Wave.vs"><Filter>vs</Filter></None>
     <None Include="..\ShaderLab\Shaders\Wave.fs"><Filter>fs</Filter></None>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\ShaderLab\TextureLibrary.cpp"><Filter>cpp</Filter></ClCompile>
+    <ClInclude Include="..\ShaderLab\TextureLibrary.h"><Filter>h</Filter></ClInclude>
+    <None Include="..\ShaderLab\Shaders\Texture.glsl"><Filter>fs</Filter></None>
   </ItemGroup>
 </Project>

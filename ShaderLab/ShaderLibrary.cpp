@@ -57,7 +57,7 @@ bool ShaderLibrary::Reload() {
         for(;effect<6;++effect) {
             std::string base=directory+"/"+Name(effect);
             std::string fragment=Read(base+".fs");
-            for(const char* shared:{"Light.glsl","Research.glsl"}) {
+            for(const char* shared:{"Light.glsl","Research.glsl","Texture.glsl"}) {
                 const std::string include=std::string("#include \"")+shared+"\"";
                 auto at=fragment.find(include);
                 if(at!=std::string::npos) fragment.replace(at,include.size(),Read(directory+"/"+shared));

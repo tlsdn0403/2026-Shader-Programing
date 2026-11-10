@@ -8,15 +8,17 @@ float Dot(Vec3 a,Vec3 b) {return a.x*b.x+a.y*b.y+a.z*b.z;}
 Vec3 Unit(Vec3 a) {float d=std::sqrt(std::max(Dot(a,a),1e-12f));return {a.x/d,a.y/d,a.z/d};}
 // 단순 도형의 부호 있는 거리 근사입니다. 변형·discard 객체는 캐스터에서 제외합니다.
 float Distance(const SceneObject& o, Vec3 p, Vec3& normal) {
-    Vec3 q={(p.x-o.position[0])/o.scale,(p.y-o.position[1])/o.scale,(p.z-o.position[2])/o.scale};
-    if(o.mesh==0) {normal=Unit(q);return (std::sqrt(Dot(q,q))-1)*o.scale;}
+    Vec3 q=o.ToLocal(p);
+    if(o.mesh==0) {normal=o.WorldNormal(Unit(q));return (std::sqrt(Dot(q,q))-1)*o.MinScale();}
     if(o.mesh==1) {
         float x=std::abs(q.x)-0.8f,y=std::abs(q.y)-0.8f,z=std::abs(q.z)-0.8f;
         normal=x>=y&&x>=z?Vec3{q.x>=0?1.f:-1.f,0,0}:y>=z?Vec3{0,q.y>=0?1.f:-1.f,0}:Vec3{0,0,q.z>=0?1.f:-1.f};
-        return std::max({x,y,z})*o.scale;
+        normal=o.WorldNormal(normal);
+        return std::max({x,y,z})*o.MinScale();
     }
     normal={0,q.y>=-1.2f?1.f:-1.f,0};
-    return std::max({std::abs(q.x)-4, std::abs(q.z)-4, std::abs(q.y+1.2f)})*o.scale;
+    normal=o.WorldNormal(normal);
+    return std::max({std::abs(q.x)-4, std::abs(q.z)-4, std::abs(q.y+1.2f)})*o.MinScale();
 }
 }
 
@@ -30,6 +32,7 @@ bool VoxelGI::Update(const Settings& s) {
     key.insert(key.end(),s.light.color,s.light.color+3);
     for(const auto& o:s.objects) {
         key.insert(key.end(),{static_cast<float>(o.mesh),static_cast<float>(o.effect),o.scale,o.emission});
+        key.insert(key.end(),o.rotation,o.rotation+3);key.insert(key.end(),o.axisScale,o.axisScale+3);
         key.insert(key.end(),o.position,o.position+3); key.insert(key.end(),o.color,o.color+3);
     }
     if(texture && key==previousKey) return false;

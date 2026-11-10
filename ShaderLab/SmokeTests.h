@@ -7,6 +7,7 @@ struct Settings;
 class Renderer;
 class EditorUI;
 int RunRendererSmokeTest(Renderer& renderer);
+int RunTextureTest(Renderer& renderer);
 int RunResearchTest(Renderer& renderer);
 class UiSmokeTest {
 public:
@@ -16,4 +17,6 @@ private:
     int testFrame = 0;
     Vec3 beforeLight{},beforeCamera{};
     ImVec2 axisMouse{};
+    Vec3 objectBefore{};
+    std::size_t objectCount=0,originalIndex=0;
 };
